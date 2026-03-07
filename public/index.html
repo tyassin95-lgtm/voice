@@ -463,6 +463,10 @@
         <div class="slider-header"><span>Input volume boost</span><span class="slider-val" id="invol-val">100%</span></div>
         <input type="range" class="range-input" id="invol-slider" min="50" max="300" value="100" oninput="onInputVolChange(this.value)">
       </div>
+      <div class="setting-row" style="margin-top:8px">
+        <div class="setting-label">Noise Cancelation<small>Removes background noise from your mic</small></div>
+        <label class="toggle"><input type="checkbox" id="toggle-noise-cancel" checked onchange="onNoiseCancelToggle()"><span class="toggle-slider"></span></label>
+      </div>
     </div>
 
     <div class="settings-section">
@@ -682,7 +686,8 @@ let settings = {
   muteKey:          'KeyM',
   bcPauseKeybind:   false,
   bcPauseKey:       'KeyB',
-  inputVolume:      100
+  inputVolume:      100,
+  noiseCancelation: true
 };
 
 let pttActive           = false;
@@ -822,6 +827,9 @@ function applySettingsUI() {
   document.getElementById('ptt-key-row').style.opacity       = settings.pushToTalk ? '1' : '0.4';
   document.getElementById('ptt-key-row').style.pointerEvents = settings.pushToTalk ? '' : 'none';
   if (inputGainNode) inputGainNode.gain.value = settings.inputVolume / 100;
+  const ncStored = localStorage.getItem('voice_noise_cancelation_enabled');
+  if (ncStored !== null) settings.noiseCancelation = ncStored === 'true';
+  document.getElementById('toggle-noise-cancel').checked = settings.noiseCancelation !== false;
 }
 
 function openSettings() {
@@ -873,6 +881,11 @@ function onPttToggle() {
     localStream.getAudioTracks().forEach(t => t.enabled = true);
   }
   updatePTTButton();
+}
+
+function onNoiseCancelToggle() {
+  settings.noiseCancelation = document.getElementById('toggle-noise-cancel').checked;
+  localStorage.setItem('voice_noise_cancelation_enabled', settings.noiseCancelation);
 }
 
 function onPttTouchToggle() {
@@ -1358,7 +1371,7 @@ function _handleCaptureFrame(i16Frame, rms) {
     if (!track?.enabled || !vadActive) return;
   }
 
-  const outFrame = denoiseFrame(i16Frame);
+  const outFrame = settings.noiseCancelation !== false ? denoiseFrame(i16Frame) : i16Frame;
   socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: outFrame.buffer });
 }
 
