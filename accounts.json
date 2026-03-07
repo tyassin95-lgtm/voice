@@ -289,5 +289,20 @@
       "pttKey": "Space",
       "inputVolume": 100
     }
+  },
+  "testuser": {
+    "username": "testuser",
+    "password": "testpass",
+    "settings": {
+      "micSensitivity": 50,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "pttTouch": false,
+      "muteKeybind": false,
+      "muteKey": "KeyM",
+      "bcPauseKeybind": false,
+      "bcPauseKey": "KeyB",
+      "inputVolume": 100
+    }
   }
 }
