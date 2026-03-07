@@ -96,8 +96,7 @@
   .menu-btn:hover{color:var(--text)}
   .header-logo{display:flex;align-items:center;gap:8px;white-space:nowrap}
   .header-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text-3)}
-  .header-brand{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.01em}
-  .header-brand span{color:var(--text)}
+  .header-channel-title{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.01em}
   .header-sep{flex:1}
 
   .header-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;background:transparent;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-2);transition:all 0.15s;user-select:none;white-space:nowrap;touch-action:manipulation}
@@ -350,7 +349,7 @@
     .member-card { padding:12px 8px 10px }
     .member-avatar { width:40px; height:40px; font-size:15px }
     .member-name { font-size:12px }
-    .header-brand { font-size:14px }
+    .header-channel-title { font-size:14px }
     .chip-name { max-width:68px; font-size:12px }
     .header-pill { padding:4px 8px; font-size:11px }
     .bc-party-grid { grid-template-columns:repeat(3,1fr) }
@@ -545,7 +544,7 @@
     <button class="menu-btn" onclick="toggleSidebar()">☰</button>
     <div class="header-logo">
       <div class="header-icon">🔊</div>
-      <div class="header-brand" id="header-channel-name">No Channel</div>
+      <div class="header-channel-title" id="header-channel-name">No Channel</div>
     </div>
     <div class="header-sep"></div>
     <div class="header-pill" id="admin-toggle" onclick="onAdminClick()">
