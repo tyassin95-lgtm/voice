@@ -24,11 +24,9 @@
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden}
   body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;overscroll-behavior:none}
-  /* Grid overlay */
   body::before{content:'';position:fixed;inset:0;
     background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
     background-size:50px 50px;opacity:0.03;z-index:0;pointer-events:none}
-  /* Blobs */
   .blob{position:fixed;width:600px;height:600px;border-radius:50%;filter:blur(100px);opacity:0.15;pointer-events:none;z-index:0}
   .blob-purple{background:radial-gradient(circle,var(--accent) 0%,transparent 70%);top:-200px;left:-200px;animation:blobFloat 20s infinite ease-in-out}
   .blob-blue{background:radial-gradient(circle,var(--accent-blue) 0%,transparent 70%);bottom:-200px;right:-200px;animation:blobFloat 20s infinite ease-in-out reverse;animation-delay:-10s}
@@ -154,7 +152,6 @@
   .ch-admin-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
   .ch-admin-btn.mute-btn:hover{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-dim)}
   
-  /* Drag and drop styles */
   .ch-member-row[draggable="true"]{cursor:move}
   .ch-member-row.dragging{opacity:0.4}
   .channel-item.drag-over{background:rgba(139,92,246,0.15);border-left:2px solid var(--accent);border-right:2px solid var(--accent)}
@@ -223,7 +220,6 @@
   .popover-btn.is-active:hover{background:rgba(224,85,85,0.25)}
   .popover-divider{border:none;border-top:1px solid var(--border);margin:10px 0}
 
-
   /* ═══ PTT TOUCH BUTTON (mobile) ═══ */
   #ptt-touch-btn {
     display: none;
@@ -271,7 +267,6 @@
   .status-dot.disconnected{background:var(--red)}
   .status-text{font-size:11px;color:var(--text-3)}
 
-
   /* ═══ BROADCAST MODAL ═══ */
   .bc-modal { max-width: 460px; }
   .bc-party-grid {
@@ -305,7 +300,6 @@
   .bc-selected-label {
     font-size: 11px; color: var(--text-3); margin-bottom: 4px; min-height: 16px;
   }
-  /* Paused state on header pill */
   .header-pill.active-paused {
     background: rgba(245,158,11,0.12); border-color: var(--yellow); color: var(--yellow);
   }
@@ -331,56 +325,36 @@
   /* ═══ MOBILE ═══ */
   @media(max-width:640px){
     :root{ --header-h:52px; --bottom-h:70px; }
-    /* Sidebar: slide-over, no layout shift */
     .menu-btn { display:flex }
     .bc-label { display:none }
     .sidebar { transform:translateX(-100%); width:82vw; max-width:300px; z-index:50 }
     .sidebar.open { transform:translateX(0) }
     .sidebar-overlay.open { display:block }
-
-    /* Main fills full width */
     .main-panel { left:0; right:0; padding:14px 12px; bottom:var(--bottom-h) }
-
-    /* Bottom bar: scrollable row, buttons shrink */
     .bottom-controls {
       left:0; right:0; padding:0 8px; gap:6px;
       overflow-x:auto; -webkit-overflow-scrolling:touch;
       justify-content:flex-start;
-      /* hide scrollbar but keep scroll */
       scrollbar-width:none;
     }
     .bottom-controls::-webkit-scrollbar { display:none }
     .ctrl-btn { padding:8px 12px; min-width:56px; flex-shrink:0; border-radius:10px }
     .ctrl-icon { font-size:18px }
     .ctrl-label { font-size:8px; letter-spacing:0.4px }
-
-    /* Status bar hidden */
     .status-bar { display:none }
-
-    /* Member cards: 2 columns */
     .members-grid { grid-template-columns:repeat(2,1fr); gap:10px }
     .member-card { padding:14px 10px 12px }
     .member-avatar { width:44px; height:44px; font-size:15px }
     .member-name { font-size:12px }
-
-    /* Header tighter */
     .header-brand { font-size:14px }
     .chip-name { max-width:68px; font-size:12px }
     .header-pill { padding:5px 10px; font-size:10px }
-
-    /* Broadcast modal grid: 3 cols on mobile */
     .bc-party-grid { grid-template-columns:repeat(3,1fr) }
-
-    /* Modals full-width on small screens with better scrolling */
     .modal-overlay { padding:12px; align-items:flex-start }
     .modal { padding:24px 16px 20px; border-radius:14px; max-height:calc(100vh - 24px); margin-top:12px }
-    
-    /* Settings sections more compact on mobile */
     .settings-section { margin-bottom:16px }
     .setting-row { margin-bottom:10px }
     .slider-row { margin-bottom:12px }
-
-    /* Notifications */
     #notifications { max-width:220px; right:8px; bottom:calc(var(--bottom-h)+8px) }
     #ptt-indicator { bottom:calc(var(--bottom-h)+8px) }
   }
@@ -530,7 +504,6 @@
   </div>
 </div>
 
-
 <!-- ═══ BROADCAST MODAL ═══ -->
 <div class="modal-overlay hidden" id="broadcast-modal">
   <div class="modal bc-modal">
@@ -653,13 +626,9 @@
 const socket = io({
   transports: ['websocket', 'polling'],
   path: '/voice/socket.io',
-  // Disable per-message compression for audio performance
   perMessageDeflate: false
 });
 
-// ═══════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════
 let myUsername    = '';
 let myPassword    = '';   // only set for registered users
 let isGuest       = true;
@@ -673,7 +642,6 @@ let localStream   = null;
 let partyData     = {};
 let amISpeaking   = false;
 
-// Settings
 let settings = {
   micSensitivity:   50,
   pushToTalk:       false,
@@ -686,28 +654,22 @@ let settings = {
   inputVolume:      100
 };
 
-let pttActive      = false;
-let pttListening   = false;
+let pttActive           = false;
+let pttListening        = false;
 let muteKeyListening    = false;
 let bcPauseKeyListening = false;
-let inputGainNode  = null;
+let inputGainNode       = null;
 
-// Audio pipeline
-let audioCtx       = null;
-let sourceNode     = null;
-let processorNode  = null;
-let SAMPLE_RATE    = 48000; // will be overwritten by actual audioCtx.sampleRate
-const CHUNK_MS     = 20;    // 20ms frames — standard VoIP frame size
-let CHUNK_SAMPLES  = Math.floor(SAMPLE_RATE * CHUNK_MS / 1000);
+let audioCtx      = null;
+let sourceNode    = null;
+let processorNode = null;
+let SAMPLE_RATE   = 48000;
 
-const peerPlayers  = {};
-const localMuted   = {};
-const localVolume  = {};
-let popoverTarget  = null;
+const peerPlayers = {};
+const localMuted  = {};
+const localVolume = {};
+let popoverTarget = null;
 
-// ═══════════════════════════════════════
-//  AUTH MODAL
-// ═══════════════════════════════════════
 function switchAuthTab(tab) {
   ['login','register','guest'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
@@ -771,21 +733,16 @@ function enterApp() {
   document.getElementById('app').style.display = 'block';
   document.getElementById('header-username').textContent = myUsername;
   document.getElementById('header-avatar').textContent   = myUsername[0].toUpperCase();
-  // Show/hide save button in settings based on account type
   document.getElementById('settings-save-row').style.display = isGuest ? 'none' : 'block';
   document.getElementById('settings-sub').textContent = isGuest
     ? 'Guest — settings not saved'
     : `Signed in as ${myUsername}`;
   socket.emit('join', { username: myUsername });
-  initAudio();
-  initVAD();
+  initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
   applySettingsUI();
   initPTTTouchButton();
 }
 
-// ═══════════════════════════════════════
-//  SETTINGS
-// ═══════════════════════════════════════
 function applySettings(s) {
   if (!s) return;
   settings = { ...settings, ...s };
@@ -824,23 +781,14 @@ function onSensChange(val) {
   settings.micSensitivity = parseInt(val);
   document.getElementById('sens-val').textContent = val;
   updateSensitivityMode(val);
-  // Reset VAD state
   vadAttackCount = 0;
   smoothedEnergy = 0;
-  // Update Silero VAD thresholds live — wider range for real impact
   if (micVAD) {
-    const sens = settings.micSensitivity;
-    // positiveSpeechThreshold: sens 1 → 0.92 (very strict), sens 50 → 0.55, sens 100 → 0.15 (very sensitive)
+    const sens      = settings.micSensitivity;
     const posThresh = 0.92 - (sens / 100) * 0.77;
-    // negativeSpeechThreshold: always ~0.15 below positive, clamped
     const negThresh = Math.max(0.10, posThresh - 0.15);
-    // minSpeechFrames: strict = need more frames to confirm speech, sensitive = fewer
     const minFrames = sens <= 25 ? 6 : (sens <= 50 ? 4 : 3);
-    micVAD.setOptions({
-      positiveSpeechThreshold: posThresh,
-      negativeSpeechThreshold: negThresh,
-      minSpeechFrames: minFrames
-    });
+    micVAD.setOptions({ positiveSpeechThreshold: posThresh, negativeSpeechThreshold: negThresh, minSpeechFrames: minFrames });
   }
 }
 
@@ -901,9 +849,6 @@ async function saveSettings() {
   else notify('Could not save settings', 'error');
 }
 
-// ═══════════════════════════════════════
-//  MUTE KEYBIND
-// ═══════════════════════════════════════
 function onMuteKeybindToggle() {
   settings.muteKeybind = document.getElementById('toggle-mute-keybind').checked;
   document.getElementById('mute-key-row').style.opacity       = settings.muteKeybind ? '1' : '0.4';
@@ -930,9 +875,6 @@ function startListeningBcPauseKey() {
   btn.classList.add('listening');
 }
 
-// ═══════════════════════════════════════
-//  PTT KEY HANDLING
-// ═══════════════════════════════════════
 document.addEventListener('keydown', e => {
   // Capture PTT key assignment
   if (pttListening) {
@@ -1044,28 +986,28 @@ function initPTTTouchButton() {
   }, { passive: false });
 }
 
-// ═══════════════════════════════════════
-//  AUDIO
-// ═══════════════════════════════════════
 async function initAudio() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl:  true
+        autoGainControl:  true,
+        channelCount:     1,
+        sampleRate:       48000,
+        latency:          0.01
       },
       video: false
     });
-    buildAudioPipeline();
+    await buildAudioPipeline();
     notify('Microphone ready', 'success');
+    // initVAD requires localStream — call it only after getUserMedia resolves
+    initVAD();
   } catch(e) {
     notify('Microphone access denied', 'error');
   }
 }
 
-
-// VAD state
 let vadActive       = false;
 let vadHoldTimer    = null;
 let vadAttackCount  = 0;
@@ -1074,7 +1016,6 @@ let lastRmsEnergy   = 0;
 let micVAD          = null;
 
 async function initVAD() {
-  // Wait until vad bundle is ready (script may still be parsing)
   let waited = 0;
   while ((!window.vad || !window.vad.MicVAD) && waited < 5000) {
     await new Promise(r => setTimeout(r, 100));
@@ -1086,19 +1027,16 @@ async function initVAD() {
   }
   try {
     const sens = settings.micSensitivity;
-    // positiveSpeechThreshold: sens 1 → 0.92, sens 50 → 0.55, sens 100 → 0.15
     const initPosThresh = 0.92 - (sens / 100) * 0.77;
     const initNegThresh = Math.max(0.10, initPosThresh - 0.15);
     const initMinFrames = sens <= 25 ? 6 : (sens <= 50 ? 4 : 3);
 
+    const vadProcessorType = (typeof AudioWorkletNode !== 'undefined') ? 'AudioWorklet' : 'ScriptProcessor';
     micVAD = await window.vad.MicVAD.new({
-      // Reuse our existing stream instead of requesting a new one
       getStream:    async () => localStream,
-      pauseStream:  async () => {},   // we manage the stream ourselves
+      pauseStream:  async () => {},
       resumeStream: async () => localStream,
-      // Use ScriptProcessor — no AudioWorklet / COOP headers needed
-      processorType: 'ScriptProcessor',
-      // Asset paths — served from our vad/ folder
+      processorType: vadProcessorType,
       baseAssetPath:    '/voice/vad/',
       onnxWASMBasePath: '/voice/vad/',
       model: 'legacy',
@@ -1109,28 +1047,27 @@ async function initVAD() {
       redemptionFrames: 8,
       onSpeechStart: () => {
         if (isMuted || settings.pushToTalk || settings.pttTouch) return;
-        // Energy gate: reject if current audio energy is below a sensitivity-scaled floor
-        // This catches Silero false-positives on low-level ambient hum
+        // Only apply energy floor check when we actually have a reading
         if (lastRmsEnergy > 0) {
-          // energyFloor: sens 1 → 0.025 (strict), sens 50 → 0.006, sens 100 → 0.001
-          const energyFloor = 0.025 * Math.pow(0.001 / 0.025, settings.micSensitivity / 100);
-          if (lastRmsEnergy < energyFloor) return; // too quiet, not real speech
+          const energyFloor = 0.025 * Math.pow(0.003 / 0.025, settings.micSensitivity / 100);
+          if (lastRmsEnergy < energyFloor) return;
         }
+        clearTimeout(vadHoldTimer);
         vadActive = true;
         if (!amISpeaking) { amISpeaking = true; updateMyCard(); }
       },
       onSpeechEnd: () => {
         if (settings.pushToTalk || settings.pttTouch) return;
-        // Small hold before closing mic — avoids cutting off last word
         clearTimeout(vadHoldTimer);
         vadHoldTimer = setTimeout(() => {
-          vadActive = false;
+          vadActive   = false;  // ← stops transmission gate
           amISpeaking = false;
           updateMyCard();
         }, 300);
       },
       onVADMisfire: () => {
-        vadActive = false;
+        clearTimeout(vadHoldTimer);
+        vadActive   = false;
         amISpeaking = false;
         updateMyCard();
       }
@@ -1143,83 +1080,214 @@ async function initVAD() {
   }
 }
 
-function buildAudioPipeline() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // Read the browser's actual sample rate — never assume 48000
-    SAMPLE_RATE   = audioCtx.sampleRate;
-    CHUNK_SAMPLES = Math.floor(SAMPLE_RATE * CHUNK_MS / 1000);
-    console.log(`[Audio] Native sample rate: ${SAMPLE_RATE}Hz, chunk: ${CHUNK_SAMPLES} samples (${CHUNK_MS}ms)`);
+const DISCORD_SAMPLE_RATE = 48000;
+const DISCORD_FRAME_MS    = 20;
+const DISCORD_FRAME_SIZE  = DISCORD_SAMPLE_RATE * DISCORD_FRAME_MS / 1000; // 960
+
+// Detect Opus support via MediaRecorder
+const OPUS_MIME = (() => {
+  const types = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'];
+  for (const t of types) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) return t;
   }
+  return null;
+})();
+
+let opusRecorder   = null;   // MediaRecorder for Opus encoding
+let opusAllowed    = false;  // true when PTT active or VAD active (gate)
+let opusTxStream   = null;   // the MediaStream fed to MediaRecorder
+
+const WORKLET_CODE = `
+class DiscordCapture extends AudioWorkletProcessor {
+  constructor(options) {
+    super();
+    this._frameSize = options.processorOptions.frameSize;
+    this._buf       = new Float32Array(this._frameSize * 2);
+    this._writePos  = 0;
+    this._active    = true;
+    this.port.onmessage = (e) => { if (e.data === 'stop') this._active = false; };
+  }
+  process(inputs) {
+    if (!this._active) return false;
+    const input = inputs[0];
+    if (!input || !input[0]) return true;
+    const ch = input[0];
+    let rmsSum = 0;
+    for (let i = 0; i < ch.length; i++) rmsSum += ch[i] * ch[i];
+    const rms = Math.sqrt(rmsSum / ch.length);
+    for (let i = 0; i < ch.length; i++) {
+      this._buf[this._writePos++] = ch[i];
+      if (this._writePos >= this._frameSize) {
+        const frame = new Int16Array(this._frameSize);
+        for (let j = 0; j < this._frameSize; j++) {
+          const s = this._buf[j];
+          frame[j] = s < 0 ? (s * 0x8000) | 0 : (s * 0x7FFF) | 0;
+        }
+        this.port.postMessage({ type: 'frame', data: frame.buffer, rms }, [frame.buffer]);
+        this._writePos = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('discord-capture', DiscordCapture);
+`;
+
+async function buildAudioPipeline() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+      sampleRate:  DISCORD_SAMPLE_RATE,
+      latencyHint: 'interactive'
+    });
+    SAMPLE_RATE = audioCtx.sampleRate;
+  }
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
 
   sourceNode    = audioCtx.createMediaStreamSource(localStream);
   inputGainNode = audioCtx.createGain();
   inputGainNode.gain.value = settings.inputVolume / 100;
   sourceNode.connect(inputGainNode);
 
-  // ScriptProcessor: VAD gate + send
-  processorNode = audioCtx.createScriptProcessor(1024, 1, 1);
-  let sendBuf = new Float32Array(0);
-  processorNode.onaudioprocess = (e) => {
-    const samples = e.inputBuffer.getChannelData(0);
+  // ── Opus encoding via MediaRecorder (when supported) ──────────────────────
+  if (OPUS_MIME) {
+    try {
+      // Create a MediaStreamDestination so MediaRecorder sees the gain-adjusted stream
+      const opusDest = audioCtx.createMediaStreamDestination();
+      inputGainNode.connect(opusDest);
+      opusTxStream = opusDest.stream;
 
-    // Always compute RMS energy — used by Silero energy gate and fallback VAD
-    let sum = 0;
-    for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
-    const rms = Math.sqrt(sum / samples.length);
-    lastRmsEnergy = rms;
+      opusRecorder = new MediaRecorder(opusTxStream, {
+        mimeType:  OPUS_MIME,
+        audioBitsPerSecond: 32000   // 32 kbps — good quality, very bandwidth-efficient
+      });
 
-    // Energy VAD fallback — only used if Silero VAD failed to load
-    if (!micVAD && !settings.pushToTalk && !settings.pttTouch && !isMuted) {
-      smoothedEnergy = rms > smoothedEnergy
-        ? rms * 0.9 + smoothedEnergy * 0.1
-        : rms * 0.03 + smoothedEnergy * 0.97;
-      const threshold = 0.05 * Math.pow(0.001 / 0.05, settings.micSensitivity / 100);
-      const attackNeeded = settings.micSensitivity <= 25 ? 6 : 4;
-      if (smoothedEnergy > threshold) {
-        vadAttackCount++;
-        clearTimeout(vadHoldTimer);
-        if (vadAttackCount >= attackNeeded && !vadActive) { vadActive = true; if (!amISpeaking) { amISpeaking = true; updateMyCard(); } }
-      } else {
-        vadAttackCount = 0;
-        if (vadActive) { clearTimeout(vadHoldTimer); vadHoldTimer = setTimeout(() => { vadActive = false; amISpeaking = false; updateMyCard(); }, 500); }
+      opusRecorder.ondataavailable = (e) => {
+        if (!e.data || e.data.size < 8) return;
+        if (!opusAllowed) return;
+        if (!currentParty && !isBroadcaster) return;
+        if (serverMutedMe) return;
+        e.data.arrayBuffer().then(ab => {
+          socket.volatile.emit('audio-chunk', {
+            rate:  DISCORD_SAMPLE_RATE,
+            codec: OPUS_MIME,
+            data:  ab
+          });
+        });
+      };
+
+      // 20 ms slices mirror the existing PCM frame cadence
+      opusRecorder.start(DISCORD_FRAME_MS);
+      console.log('[Audio] Opus encoding active via MediaRecorder (' + OPUS_MIME + ')');
+    } catch(e) {
+      console.warn('[Audio] Opus MediaRecorder failed, falling back to PCM:', e);
+      opusRecorder = null;
+    }
+  }
+
+  let useWorklet = false;
+  if (audioCtx.audioWorklet) {
+    try {
+      const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+      const url  = URL.createObjectURL(blob);
+      await audioCtx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      useWorklet = true;
+    } catch(e) {
+      console.warn('[Audio] AudioWorklet failed, falling back to ScriptProcessor:', e);
+    }
+  }
+
+  if (useWorklet) {
+    processorNode = new AudioWorkletNode(audioCtx, 'discord-capture', {
+      processorOptions: { frameSize: DISCORD_FRAME_SIZE },
+      numberOfInputs:  1,
+      numberOfOutputs: 0,
+      channelCount:    1,
+      channelCountMode: 'explicit',
+      channelInterpretation: 'discrete'
+    });
+    processorNode.port.onmessage = (e) => {
+      if (e.data.type !== 'frame') return;
+      _handleCaptureFrame(new Int16Array(e.data.data), e.data.rms);
+    };
+    inputGainNode.connect(processorNode);
+  } else {
+    processorNode = audioCtx.createScriptProcessor(256, 1, 1);
+    let _spBuf   = new Float32Array(DISCORD_FRAME_SIZE * 2);
+    let _spWrite = 0;
+    processorNode.onaudioprocess = (e) => {
+      const ch = e.inputBuffer.getChannelData(0);
+      let rmsSum = 0;
+      for (let i = 0; i < ch.length; i++) rmsSum += ch[i] * ch[i];
+      const rms = Math.sqrt(rmsSum / ch.length);
+      for (let i = 0; i < ch.length; i++) {
+        _spBuf[_spWrite++] = ch[i];
+        if (_spWrite >= DISCORD_FRAME_SIZE) {
+          const frame = new Int16Array(DISCORD_FRAME_SIZE);
+          for (let j = 0; j < DISCORD_FRAME_SIZE; j++) {
+            const s = _spBuf[j];
+            frame[j] = s < 0 ? (s * 0x8000) | 0 : (s * 0x7FFF) | 0;
+          }
+          _handleCaptureFrame(frame, rms);
+          _spWrite = 0;
+        }
       }
-    }
-
-    // Gate + send
-    const track = localStream.getAudioTracks()[0];
-    if (!track?.enabled || (!currentParty && !isBroadcaster) || serverMutedMe) return;
-    const shouldSend = (settings.pushToTalk || settings.pttTouch) ? true : vadActive;
-    if (!shouldSend) return;
-
-    // Efficient buffer concatenation using typed arrays
-    const newBuf = new Float32Array(sendBuf.length + samples.length);
-    newBuf.set(sendBuf);
-    newBuf.set(samples, sendBuf.length);
-    sendBuf = newBuf;
-
-    while (sendBuf.length >= CHUNK_SAMPLES) {
-      const chunk = sendBuf.slice(0, CHUNK_SAMPLES);
-      sendBuf = sendBuf.slice(CHUNK_SAMPLES);
-      socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, data: float32ToInt16(chunk).buffer });
-    }
-  };
-
-  inputGainNode.connect(processorNode);
-  processorNode.connect(audioCtx.destination);
+    };
+    inputGainNode.connect(processorNode);
+    processorNode.connect(audioCtx.destination);
+  }
 
   if (settings.pushToTalk || settings.pttTouch) localStream.getAudioTracks().forEach(t => t.enabled = false);
   updatePTTButton();
 }
 
-function float32ToInt16(f32) {
-  const i16 = new Int16Array(f32.length);
-  for (let i = 0; i < f32.length; i++) { const s = Math.max(-1,Math.min(1,f32[i])); i16[i] = s<0?s*0x8000:s*0x7FFF; }
-  return i16;
+function _handleCaptureFrame(i16Frame, rms) {
+  // Scale RMS by the input gain so energy VAD reflects the actual transmitted level
+  const gainedRms = rms * (settings.inputVolume / 100);
+  lastRmsEnergy = gainedRms;
+
+  if (!micVAD && !settings.pushToTalk && !settings.pttTouch && !isMuted) {
+    smoothedEnergy = gainedRms > smoothedEnergy
+      ? gainedRms * 0.85 + smoothedEnergy * 0.15
+      : gainedRms * 0.02 + smoothedEnergy * 0.98;
+    const threshold    = 0.05 * Math.pow(0.003 / 0.05, settings.micSensitivity / 100);
+    const attackNeeded = settings.micSensitivity <= 25 ? 6 : 4;
+    if (smoothedEnergy > threshold) {
+      vadAttackCount++;
+      clearTimeout(vadHoldTimer);
+      if (vadAttackCount >= attackNeeded && !vadActive) {
+        vadActive = true;
+        if (!amISpeaking) { amISpeaking = true; updateMyCard(); }
+      }
+    } else {
+      vadAttackCount = 0;
+      if (vadActive) {
+        clearTimeout(vadHoldTimer);
+        vadHoldTimer = setTimeout(() => { vadActive = false; amISpeaking = false; updateMyCard(); }, 500);
+      }
+    }
+  }
+
+  const track = localStream?.getAudioTracks()[0];
+  if (!currentParty && !isBroadcaster) return;
+  if (serverMutedMe) return;
+  if (settings.pushToTalk || settings.pttTouch) {
+    if (!pttActive) { opusAllowed = false; return; }
+    opusAllowed = true;
+  } else {
+    if (!track?.enabled || !vadActive) { opusAllowed = false; return; }
+    opusAllowed = true;
+  }
+
+  // If Opus MediaRecorder is active it handles transmission; skip raw PCM
+  if (opusRecorder && opusRecorder.state === 'recording') return;
+
+  socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: i16Frame.buffer });
 }
+
 function int16ToFloat32(i16) {
   const f32 = new Float32Array(i16.length);
-  for (let i = 0; i < i16.length; i++) f32[i] = i16[i]/(i16[i]<0?0x8000:0x7FFF);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / (i16[i] < 0 ? 0x8000 : 0x7FFF);
   return f32;
 }
 
@@ -1230,26 +1298,29 @@ function updateMyCard() {
   rebuildTags(card, true);
 }
 
-// ═══════════════════════════════════════
-//  PLAYBACK — Adaptive Jitter Buffer
-// ═══════════════════════════════════════
-// Single shared AudioContext for all peer playback (avoids browser limits)
 let playbackCtx = null;
 
 function getPlaybackCtx() {
   if (!playbackCtx || playbackCtx.state === 'closed') {
-    playbackCtx = new (window.AudioContext || window.webkitAudioContext)();
+    playbackCtx = new (window.AudioContext || window.webkitAudioContext)({
+      sampleRate:  DISCORD_SAMPLE_RATE,
+      latencyHint: 'interactive'
+    });
   }
   if (playbackCtx.state === 'suspended') playbackCtx.resume();
   return playbackCtx;
 }
 
+const JITTER_MIN   = 0.020;
+const JITTER_MAX   = 0.150;
+const JITTER_ALPHA = 0.05;
+
 socket.on('audio-from', ({ from, chunk }) => {
   if (isDeafened || localMuted[from]) return;
-  const ctx = getPlaybackCtx();
 
-  // Unpack: chunk is { rate, data } where rate is sender's sample rate
-  const senderRate = chunk.rate || SAMPLE_RATE;
+  const ctx        = getPlaybackCtx();
+  const senderRate = chunk.rate || DISCORD_SAMPLE_RATE;
+  const codec      = chunk.codec || 'pcm';
   const audioData  = chunk.data;
 
   if (!peerPlayers[from]) {
@@ -1258,63 +1329,82 @@ socket.on('audio-from', ({ from, chunk }) => {
     gainNode.connect(ctx.destination);
     peerPlayers[from] = {
       gainNode,
-      nextTime: 0,
-      // Adaptive jitter tracking
-      jitterBuffer: CHUNK_MS / 1000 * 2,  // start with 2 frames of buffer (~40ms)
-      lastArrival: 0,
-      arrivalJitter: 0,
-      packetsPlayed: 0,
-      silenceCount: 0
+      nextTime:     0,
+      jitterTarget: JITTER_MIN * 2,
+      lastArrival:  0,
+      jitterEwma:   0,
+      silenceTimer: null
     };
   }
 
-  const player = peerPlayers[from];
-  const f32 = int16ToFloat32(new Int16Array(audioData));
-  // Create buffer at the SENDER's sample rate — this ensures correct pitch
-  // The AudioContext will automatically resample to its own output rate
-  const buf = ctx.createBuffer(1, f32.length, senderRate);
-  buf.copyToChannel(f32, 0);
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  src.connect(player.gainNode);
+  const peer = peerPlayers[from];
 
-  const now = ctx.currentTime;
-  const frameDur = buf.duration; // ~20ms
+  function _scheduleBuf(buf) {
+    const now = ctx.currentTime;
+    if (peer.lastArrival > 0) {
+      const instantJitter = Math.abs((now - peer.lastArrival) - DISCORD_FRAME_MS / 1000);
+      peer.jitterEwma = peer.jitterEwma * (1 - JITTER_ALPHA) + instantJitter * JITTER_ALPHA;
+      peer.jitterTarget = Math.min(JITTER_MAX, Math.max(JITTER_MIN, peer.jitterEwma * 2));
+    }
+    peer.lastArrival = now;
 
-  // ── Adaptive jitter estimation ──
-  if (player.lastArrival > 0) {
-    const interArrival = now - player.lastArrival;
-    const jitter = Math.abs(interArrival - frameDur);
-    // Exponential moving average of jitter
-    player.arrivalJitter = player.arrivalJitter * 0.95 + jitter * 0.05;
-    // Target buffer = 2× observed jitter, clamped between 20ms and 200ms
-    player.jitterBuffer = Math.min(0.2, Math.max(0.02, player.arrivalJitter * 2));
+    const frameDur = buf.duration;
+    const isFirst  = peer.nextTime === 0;
+    const underrun = peer.nextTime < now - frameDur * 0.5;
+    const overrun  = peer.nextTime > now + JITTER_MAX;
+
+    if (isFirst || underrun || overrun) {
+      peer.nextTime = now + peer.jitterTarget;
+    } else if (peer.nextTime < now + frameDur * 0.25) {
+      peer.nextTime += frameDur * 0.5;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(peer.gainNode);
+    src.start(peer.nextTime);
+    peer.nextTime += frameDur;
+
+    showPeerSpeaking(from, true);
+    clearTimeout(peer.silenceTimer);
+    peer.silenceTimer = setTimeout(() => {
+      showPeerSpeaking(from, false);
+      if (peerPlayers[from]) peerPlayers[from].nextTime = 0;
+    }, 350);
   }
-  player.lastArrival = now;
 
-  // ── Schedule playback ──
-  // If this is the first packet, or we've fallen behind (gap/lag), reset timing
-  const tooFarBehind = player.nextTime < now - 0.05;         // buffer underrun: gap in audio
-  const tooFarAhead  = player.nextTime > now + 0.3;          // buffer overrun: latency building up
-  const firstPacket  = player.nextTime === 0;
-
-  if (firstPacket || tooFarBehind || tooFarAhead) {
-    // Reset: play after a small adaptive buffer delay
-    player.nextTime = now + player.jitterBuffer;
-    player.silenceCount = 0;
+  if (codec !== 'pcm') {
+    // Opus (or other browser-native codec): decode via AudioContext
+    ctx.decodeAudioData(audioData.slice(0)).then(decoded => {
+      _scheduleBuf(decoded);
+    }).catch(() => {}); // stale/partial frames are fine to drop
+    return;
   }
 
-  src.start(player.nextTime);
-  player.nextTime += frameDur;
-  player.packetsPlayed++;
+  // PCM fallback path
+  const i16  = new Int16Array(audioData);
+  const f32  = int16ToFloat32(i16);
 
-  showPeerSpeaking(from, true);
-  clearTimeout(player.silenceTimer);
-  player.silenceTimer = setTimeout(() => {
-    showPeerSpeaking(from, false);
-    // Reset nextTime on silence so next speech burst gets fresh timing
-    if (peerPlayers[from]) peerPlayers[from].nextTime = 0;
-  }, 300);
+  const numSamples = senderRate === DISCORD_SAMPLE_RATE
+    ? f32.length
+    : Math.round(f32.length * DISCORD_SAMPLE_RATE / senderRate);
+
+  const buf = ctx.createBuffer(1, numSamples, DISCORD_SAMPLE_RATE);
+
+  if (senderRate === DISCORD_SAMPLE_RATE) {
+    buf.copyToChannel(f32, 0);
+  } else {
+    const ratio = (f32.length - 1) / (numSamples - 1);
+    const ch    = buf.getChannelData(0);
+    for (let i = 0; i < numSamples; i++) {
+      const pos  = i * ratio;
+      const lo   = pos | 0;
+      const hi   = Math.min(lo + 1, f32.length - 1);
+      ch[i] = f32[lo] + (f32[hi] - f32[lo]) * (pos - lo);
+    }
+  }
+
+  _scheduleBuf(buf);
 });
 
 function showPeerSpeaking(sid, speaking) {
@@ -1336,9 +1426,6 @@ function removePeerPlayer(sid) {
   }
 }
 
-// ═══════════════════════════════════════
-//  MUTE / DEAFEN
-// ═══════════════════════════════════════
 function toggleMute() {
   if (settings.pushToTalk || settings.pttTouch) return; // PTT controls mic
   if (isDeafened) return;
@@ -1351,7 +1438,6 @@ function toggleDeafen() {
   isDeafened = !isDeafened;
   isMuted    = isDeafened;
   socket.emit('set-self-deafened', { deafened: isDeafened });
-  // Also update mute state since deafen affects it
   socket.emit('set-self-muted', { muted: isMuted });
   applyAudioState();
 }
@@ -1395,9 +1481,6 @@ function rebuildTags(card, isMe) {
     (locMuted ? '<span class="tag tag-local-muted">Muted by you</span>'    : '');
 }
 
-// ═══════════════════════════════════════
-//  SERVER MUTE (received)
-// ═══════════════════════════════════════
 socket.on('server-muted', ({ muted, by }) => {
   serverMutedMe = muted;
   if (muted) {
@@ -1423,17 +1506,12 @@ socket.on('admin-moved', ({ by, toPartyId }) => {
   renderMainPanel();
 });
 
-// ═══════════════════════════════════════
-//  ADMIN
-// ═══════════════════════════════════════
 function onAdminClick() {
   if (isAdmin) {
-    // Revoke
     isAdmin = false;
     socket.emit('revoke-admin');
     document.getElementById('admin-toggle').classList.remove('active-yellow');
     document.getElementById('broadcaster-toggle').style.display = 'none';
-    // Auto-stop broadcasting when admin is revoked
     if (isBroadcaster) {
       isBroadcaster = false;
       document.getElementById('broadcaster-toggle').classList.remove('active-red');
@@ -1492,28 +1570,17 @@ function adminKick() {
   closePopover();
 }
 
-// ═══════════════════════════════════════
-//  BROADCASTER
-// ═══════════════════════════════════════
-let bcTargets     = 'all';   // 'all' | number[]
-let bcPaused      = false;
-let bcAllSelected = true;
-let bcPartySelected = new Set(); // selected party IDs when not 'all'
+let bcTargets      = 'all';
+let bcPaused       = false;
+let bcAllSelected  = true;
+let bcPartySelected = new Set();
 
 function toggleBroadcaster() {
-  if (isBroadcaster) {
-    // Already live — clicking stops it
-    stopBroadcast();
-  } else {
-    // Open the target picker modal
-    openBroadcastModal();
-  }
+  isBroadcaster ? stopBroadcast() : openBroadcastModal();
 }
 
 function openBroadcastModal() {
-  // Build party buttons with live member counts
-  const grid = document.getElementById('bc-party-grid');
-  // Remove old party buttons (keep the All button which is first child)
+  const grid   = document.getElementById('bc-party-grid');
   const allBtn = document.getElementById('bc-all-btn');
   grid.innerHTML = '';
   grid.appendChild(allBtn);
@@ -1527,7 +1594,6 @@ function openBroadcastModal() {
     btn.onclick = () => bcToggleParty(i);
     grid.appendChild(btn);
   }
-  // Reset to 'all' each time modal opens fresh (unless there's an active selection)
   if (!isBroadcaster) {
     bcAllSelected = true;
     bcPartySelected.clear();
@@ -1550,7 +1616,6 @@ function bcToggleAll() {
 }
 
 function bcToggleParty(id) {
-  // Deselect "All" when picking specific parties
   bcAllSelected = false;
   document.getElementById('bc-all-btn').classList.remove('selected');
   if (bcPartySelected.has(id)) {
@@ -1560,7 +1625,6 @@ function bcToggleParty(id) {
   }
   const btn = document.getElementById(`bc-party-${id}`);
   if (btn) btn.classList.toggle('selected', bcPartySelected.has(id));
-  // If nothing selected, fall back to all
   if (bcPartySelected.size === 0) bcToggleAll();
   updateBcSelectedLabel();
 }
@@ -1636,9 +1700,6 @@ function updateBcPauseBtn() {
   }
 }
 
-// ═══════════════════════════════════════
-//  POPOVER (per-user controls)
-// ═══════════════════════════════════════
 function openPopover(sid, event) {
   event.stopPropagation();
   const member = Object.values(partyData).flat().find(m => m.socketId === sid);
@@ -1720,9 +1781,6 @@ function toggleLocalMute() {
   }
 }
 
-// ═══════════════════════════════════════
-//  SIDEBAR
-// ═══════════════════════════════════════
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-overlay').classList.toggle('open');
@@ -1732,9 +1790,6 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-// ═══════════════════════════════════════
-//  RENDER
-// ═══════════════════════════════════════
 function renderSidebar() {
   const list = document.getElementById('party-list');
   list.innerHTML = '';
@@ -1848,12 +1903,10 @@ function sidebarAdminKick(targetId, username, event) {
 }
 
 function renderMainPanel() {
-  const empty = document.getElementById('empty-state');
-  const view  = document.getElementById('party-view');
-  // Leave button — visible only when in a party
+  const empty    = document.getElementById('empty-state');
+  const view     = document.getElementById('party-view');
   const leaveBtn = document.getElementById('btn-leave');
   if (leaveBtn) leaveBtn.style.display = currentParty ? 'flex' : 'none';
-  // Pause broadcast button — visible only when actively broadcasting
   updateBcPauseBtn();
   if (!currentParty) { empty.style.display='flex'; view.style.display='none'; return; }
   empty.style.display='none'; view.style.display='block';
@@ -1928,9 +1981,6 @@ function memberCardHTML(m, isMe) {
   </div>`;
 }
 
-// ═══════════════════════════════════════
-//  PARTY JOIN/LEAVE
-// ═══════════════════════════════════════
 function joinParty(partyId) {
   if (currentParty === partyId) return;
   Object.keys(peerPlayers).forEach(removePeerPlayer);
@@ -1949,29 +1999,20 @@ function leaveParty() {
   renderSidebar(); renderMainPanel();
 }
 
-// ═══════════════════════════════════════
-//  SOCKET EVENTS
-// ═══════════════════════════════════════
 socket.on('connect', () => {
-  document.getElementById('status-dot').className   = 'status-dot connected';
+  document.getElementById('status-dot').className    = 'status-dot connected';
   document.getElementById('status-text').textContent = 'Connected';
-  // Re-join after reconnection if we were previously logged in
   if (myUsername) {
     socket.emit('join', { username: myUsername });
-    if (currentParty) {
-      socket.emit('join-party', { partyId: currentParty });
-    }
-    if (isBroadcaster) {
-      socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
-    }
+    if (currentParty) socket.emit('join-party', { partyId: currentParty });
+    if (isBroadcaster) socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
     if (isAdmin) {
-      // Admin needs to re-authenticate — just flag it visually
       isAdmin = false;
       document.getElementById('admin-toggle').classList.remove('active-yellow');
       document.getElementById('broadcaster-toggle').style.display = 'none';
       notify('Reconnected — re-enter admin password if needed', 'warn');
     }
-    if (isMuted) socket.emit('set-self-muted', { muted: true });
+    if (isMuted)    socket.emit('set-self-muted',    { muted: true });
     if (isDeafened) socket.emit('set-self-deafened', { deafened: true });
   }
 });
@@ -2004,9 +2045,6 @@ socket.on('broadcaster-joined', ({ socketId, username }) => {
   renderMainPanel();
 });
 
-// ═══════════════════════════════════════
-//  NOTIFICATIONS
-// ═══════════════════════════════════════
 function notify(msg, type = '') {
   const el = document.createElement('div');
   el.className = `notif${type?' '+type:''}`;
@@ -2015,10 +2053,6 @@ function notify(msg, type = '') {
   setTimeout(() => el.remove(), 4500);
 }
 
-
-// ═══════════════════════════════════════
-//  SOUND ENGINE
-// ═══════════════════════════════════════
 let sfxCtx = null;
 
 function getSfxCtx() {
@@ -2088,30 +2122,21 @@ function playSound(type) {
   } catch(e) { /* audio unavailable */ }
 }
 
-// ═══════════════════════════════════════
-//  LOGOUT
-// ═══════════════════════════════════════
 function logout() {
   if (!confirm('Sign out of OathlyVoice?')) return;
-  // Leave party gracefully
   if (currentParty) socket.emit('leave-party');
-  // Stop broadcasting
   if (isBroadcaster) { isBroadcaster = false; socket.emit('set-broadcaster', { isBroadcaster: false }); }
-  // Stop VAD
   if (micVAD) { try { micVAD.destroy(); } catch(e){} micVAD = null; }
-  // Stop mic
+  if (opusRecorder && opusRecorder.state !== 'inactive') { try { opusRecorder.stop(); } catch(e){} opusRecorder = null; }
+  if (processorNode?.port) { try { processorNode.port.postMessage('stop'); } catch(e){} }
   if (localStream) localStream.getTracks().forEach(t => t.stop());
-  // Close audio contexts
-  if (audioCtx) { try { audioCtx.close(); } catch(e){} }
-  if (playbackCtx) { try { playbackCtx.close(); } catch(e){} }
+  if (audioCtx)    { try { audioCtx.close(); }    catch(e){} audioCtx    = null; }
+  if (playbackCtx) { try { playbackCtx.close(); } catch(e){} playbackCtx = null; }
   Object.keys(peerPlayers).forEach(removePeerPlayer);
-  // Disconnect socket
   socket.disconnect();
-  // Reload page to return to login
   window.location.reload();
 }
 
-// iOS unlock
 document.addEventListener('touchstart', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
