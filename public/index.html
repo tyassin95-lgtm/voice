@@ -689,6 +689,7 @@ let isAdmin       = false;
 let serverMutedMe = false;
 let localStream   = null;
 let partyData     = {};
+const MAX_PARTIES = 12;
 let amISpeaking   = false;
 
 // ── Latency tracking ──
@@ -1746,6 +1747,7 @@ socket.on('force-disconnect', ({ by }) => {
 });
 
 socket.on('admin-moved', ({ by, toPartyId }) => {
+  if (!Number.isInteger(toPartyId) || toPartyId < 1 || toPartyId > MAX_PARTIES) return;
   notify(`Admin ${by} moved you to Party ${toPartyId}`, 'warn');
   Object.keys(peerPlayers).forEach(removePeerPlayer);
   currentParty = toPartyId;
@@ -1832,7 +1834,7 @@ function openBroadcastModal() {
   grid.innerHTML = '';
   grid.appendChild(allBtn);
 
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 1; i <= MAX_PARTIES; i++) {
     const count = (partyData[i] || []).length;
     const btn = document.createElement('button');
     btn.className = 'bc-party-btn' + (bcPartySelected.has(i) && !bcAllSelected ? ' selected' : '');
@@ -2040,7 +2042,7 @@ function closeSidebar() {
 function renderSidebar() {
   const list = document.getElementById('party-list');
   list.innerHTML = '';
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 1; i <= MAX_PARTIES; i++) {
     const members = partyData[i] || [];
     const count   = members.length;
     const active  = currentParty === i;
@@ -2172,7 +2174,7 @@ function renderMainPanel() {
 
   const members = partyData[currentParty] || [];
   const broadcasters = [];
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 1; i <= MAX_PARTIES; i++) {
     (partyData[i]||[]).forEach(m => {
       if (m.isBroadcaster && m.socketId !== socket.id && !broadcasters.find(b=>b.socketId===m.socketId))
         broadcasters.push(m);
@@ -2245,6 +2247,7 @@ function memberCardHTML(m, isMe) {
 
 function joinParty(partyId) {
   if (currentParty === partyId) return;
+  if (!Number.isInteger(partyId) || partyId < 1 || partyId > MAX_PARTIES) return;
   Object.keys(peerPlayers).forEach(removePeerPlayer);
   currentParty = partyId;
   socket.emit('join-party', { partyId });
@@ -2288,13 +2291,19 @@ socket.on('disconnect', () => {
 
 socket.on('init', ({ partyList }) => {
   partyData = {};
-  Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
+  Object.entries(partyList).forEach(([id,m]) => {
+    const n = parseInt(id);
+    if (n >= 1 && n <= MAX_PARTIES) partyData[n] = m;
+  });
   renderSidebar();
 });
 
 socket.on('party-update', (partyList) => {
   partyData = {};
-  Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
+  Object.entries(partyList).forEach(([id,m]) => {
+    const n = parseInt(id);
+    if (n >= 1 && n <= MAX_PARTIES) partyData[n] = m;
+  });
   renderSidebar();
   if (currentParty) renderMainPanel();
 });

@@ -121,6 +121,7 @@ io.on('connection', (socket) => {
   socket.on('join-party', ({ partyId }) => {
     const user = users[socket.id];
     if (!user) return;
+    if (!Number.isInteger(partyId) || partyId < 1 || partyId > NUM_PARTIES) return;
     if (user.party !== null) {
       parties[user.party].delete(socket.id);
       socket.leave(`party-${user.party}`);
@@ -217,6 +218,7 @@ io.on('connection', (socket) => {
     if (!admin?.isAdmin) return;
     const target = users[targetId];
     if (!target) return;
+    if (!Number.isInteger(toPartyId) || toPartyId < 1 || toPartyId > NUM_PARTIES) return;
 
     if (target.party !== null) {
       parties[target.party].delete(targetId);
