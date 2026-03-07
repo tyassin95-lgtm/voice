@@ -1841,6 +1841,7 @@ function renderSidebar() {
         const isMe = m.socketId === socket.id;
         const row  = document.createElement('div');
         row.className = 'ch-member-row';
+        row.dataset.sid = m.socketId;
         
         // Make draggable for admins (except for yourself)
         if (isAdmin && !isMe) {
@@ -2070,6 +2071,7 @@ socket.on('broadcaster-joined', ({ socketId, username }) => {
 // ── Latency measurement ──
 socket.on('latency-update', ({ socketId, latency }) => {
   peerLatency[socketId] = latency;
+  updateLatencyDisplay();
 });
 
 function startPingLoop() {
@@ -2126,8 +2128,25 @@ function updateLatencyDisplay() {
       badge.textContent = ms + ' ms';
     }
   });
-  // Refresh sidebar to show updated latency values
-  renderSidebar();
+  // Update sidebar latency spans via data-sid attributes
+  const allLat = { [socket.id]: myLatency, ...peerLatency };
+  Object.entries(allLat).forEach(([sid, ms]) => {
+    const row = document.querySelector(`.ch-member-row[data-sid="${sid}"]`);
+    if (!row) return;
+    let latSpan = row.querySelector('.ch-latency');
+    if (ms != null) {
+      if (!latSpan) {
+        latSpan = document.createElement('span');
+        latSpan.className = 'ch-latency';
+        const tags = row.querySelector('.ch-member-tags');
+        row.insertBefore(latSpan, tags);
+      }
+      latSpan.className = 'ch-latency ' + latencyClass(ms);
+      latSpan.textContent = ms + 'ms';
+    } else if (latSpan) {
+      latSpan.remove();
+    }
+  });
 }
 
 function notify(msg, type = '') {
