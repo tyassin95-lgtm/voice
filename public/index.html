@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <script src="/voice/vad/ort.wasm.min.js"></script>
 <script src="/voice/vad/vad.bundle.min.js"></script>
+<script src="/voice/rnnoise/rnnoise.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1058,6 +1059,7 @@ async function initAudio() {
       video: false
     });
     await buildAudioPipeline();
+    initRNNoise(); // non-blocking; falls back gracefully if unavailable
     notify('Microphone ready', 'success');
     // initVAD requires localStream — call it only after getUserMedia resolves
     initVAD();
@@ -1141,6 +1143,64 @@ async function initVAD() {
 const DISCORD_SAMPLE_RATE = 48000;
 const DISCORD_FRAME_MS    = 20;
 const DISCORD_FRAME_SIZE  = DISCORD_SAMPLE_RATE * DISCORD_FRAME_MS / 1000; // 960
+
+/* ── RNNoise noise suppression ── */
+const RNNOISE_FRAME_SIZE = 480; // RNNoise processes 480-sample frames (10ms @ 48kHz)
+let rnnoiseModule   = null;
+let rnnoiseState    = null;
+let rnnoiseInputPtr = 0;
+let rnnoiseOutputPtr = 0;
+
+async function initRNNoise() {
+  try {
+    if (typeof createRNNWasmModule !== 'function') {
+      console.warn('[RNNoise] Module not available, skipping noise suppression');
+      return;
+    }
+    const mod = await createRNNWasmModule({
+      locateFile: (file) => '/voice/rnnoise/' + file
+    });
+    mod._rnnoise_init();
+    const state = mod._rnnoise_create();
+    if (!state) throw new Error('rnnoise_create returned null');
+    const inPtr  = mod._malloc(RNNOISE_FRAME_SIZE * 4); // 480 float32s
+    const outPtr = mod._malloc(RNNOISE_FRAME_SIZE * 4);
+    if (!inPtr || !outPtr) throw new Error('Failed to allocate WASM memory');
+    rnnoiseModule    = mod;
+    rnnoiseState     = state;
+    rnnoiseInputPtr  = inPtr;
+    rnnoiseOutputPtr = outPtr;
+    console.log('[RNNoise] Noise suppression initialized ✓');
+  } catch (e) {
+    console.warn('[RNNoise] Failed to initialize, continuing without noise suppression:', e);
+    rnnoiseModule = null;
+    rnnoiseState  = null;
+  }
+}
+
+function denoiseFrame(i16Frame) {
+  if (!rnnoiseState) return i16Frame;
+  const len = i16Frame.length;
+  const f32 = new Float32Array(len);
+  for (let i = 0; i < len; i++) f32[i] = i16Frame[i]; // RNNoise expects float32 in [-32768, 32767]
+  const heapF32 = rnnoiseModule.HEAPF32;
+  const inOff   = rnnoiseInputPtr  >> 2;
+  const outOff  = rnnoiseOutputPtr >> 2;
+  for (let offset = 0; offset < len; offset += RNNOISE_FRAME_SIZE) {
+    const remaining = len - offset;
+    if (remaining < RNNOISE_FRAME_SIZE) break; // skip incomplete tail
+    heapF32.set(f32.subarray(offset, offset + RNNOISE_FRAME_SIZE), inOff);
+    rnnoiseModule._rnnoise_process_frame(rnnoiseState, rnnoiseOutputPtr, rnnoiseInputPtr);
+    const processed = heapF32.subarray(outOff, outOff + RNNOISE_FRAME_SIZE);
+    for (let j = 0; j < RNNOISE_FRAME_SIZE; j++) f32[offset + j] = processed[j];
+  }
+  const result = new Int16Array(len);
+  for (let i = 0; i < len; i++) {
+    const v = f32[i];
+    result[i] = v > 32767 ? 32767 : v < -32768 ? -32768 : v | 0;
+  }
+  return result;
+}
 
 const WORKLET_CODE = `
 class DiscordCapture extends AudioWorkletProcessor {
@@ -1285,7 +1345,8 @@ function _handleCaptureFrame(i16Frame, rms) {
     if (!track?.enabled || !vadActive) return;
   }
 
-  socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: i16Frame.buffer });
+  const outFrame = denoiseFrame(i16Frame);
+  socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: outFrame.buffer });
 }
 
 function int16ToFloat32(i16) {
