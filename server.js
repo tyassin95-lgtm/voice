@@ -35,7 +35,7 @@ function saveAccounts(data) {
 
 // REST endpoints for account management
 app.post('/voice/api/register', (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
   if (!username || !password) return res.json({ ok: false, error: 'Missing fields' });
   const accounts = loadAccounts();
   if (accounts[username.toLowerCase()]) return res.json({ ok: false, error: 'Username taken' });
@@ -45,7 +45,7 @@ app.post('/voice/api/register', (req, res) => {
 });
 
 app.post('/voice/api/login', (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
   const accounts = loadAccounts();
   const acc = accounts[username?.toLowerCase()];
   if (!acc || acc.password !== password) return res.json({ ok: false, error: 'Invalid credentials' });
@@ -53,7 +53,7 @@ app.post('/voice/api/login', (req, res) => {
 });
 
 app.post('/voice/api/save-settings', (req, res) => {
-  const { username, password, settings } = req.body;
+  const { username, password, settings } = req.body || {};
   const accounts = loadAccounts();
   const acc = accounts[username?.toLowerCase()];
   if (!acc || acc.password !== password) return res.json({ ok: false, error: 'Unauthorized' });
@@ -296,6 +296,12 @@ io.on('connection', (socket) => {
     }
     console.log('Disconnected:', socket.id);
   });
+});
+
+// Express error handler — return JSON instead of HTML stack traces
+app.use((err, req, res, next) => {
+  console.error('[Express error]', err.message);
+  res.status(err.status || 500).json({ ok: false, error: 'Server error' });
 });
 
 const PORT = process.env.PORT || 3000;
