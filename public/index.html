@@ -671,6 +671,7 @@ const localVolume = {};
 let popoverTarget = null;
 
 function esc(str) {
+  if (str == null) return '';
   const d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
@@ -1979,7 +1980,7 @@ function memberCardHTML(m, isMe) {
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
     id="card-${m.socketId}"
     ${!isMe?`onclick="openPopover('${m.socketId}',event)"`:''}>
-    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${esc(m.username[0].toUpperCase())}</div>
+    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${esc((m.username || '?')[0].toUpperCase())}</div>
     <div class="member-name">${esc(m.username)}</div>
     ${isMe?'<div class="member-you">· you</div>':''}
     <div class="member-tags">
