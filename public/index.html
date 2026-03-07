@@ -197,6 +197,16 @@
   .tag-admin{background:rgba(88,101,242,0.15);color:var(--accent2)}
   .tag-ptt{background:rgba(88,101,242,0.1);color:var(--accent2)}
 
+  /* ═══ LATENCY BADGE ═══ */
+  .latency-badge{font-size:10px;font-weight:500;margin-top:4px;color:var(--text-3)}
+  .latency-badge.latency-good{color:#3ba55d}
+  .latency-badge.latency-medium{color:#e6a420}
+  .latency-badge.latency-bad{color:#ed4245}
+  .ch-latency{font-size:10px;font-weight:500;color:var(--text-3);flex-shrink:0;margin-left:4px}
+  .ch-latency.latency-good{color:#3ba55d}
+  .ch-latency.latency-medium{color:#e6a420}
+  .ch-latency.latency-bad{color:#ed4245}
+
   .broadcast-banner{background:rgba(237,66,69,0.08);border:1px solid rgba(237,66,69,0.3);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
   .bc-banner-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.4s infinite;flex-shrink:0}
   .bc-banner-text{font-size:12px;font-weight:600;color:var(--red)}
@@ -656,6 +666,11 @@ let serverMutedMe = false;
 let localStream   = null;
 let partyData     = {};
 let amISpeaking   = false;
+
+// ── Latency tracking ──
+const peerLatency = {};   // socketId → latency in ms
+let myLatency     = null; // own latency in ms
+let pingInterval  = null; // interval handle
 
 let settings = {
   micSensitivity:   50,
@@ -1846,6 +1861,15 @@ function renderSidebar() {
         nameSpan.textContent = (isMe ? '▶ ' : '') + muteIcon + (muteIcon ? ' ' : '') + m.username;
         row.appendChild(nameSpan);
 
+        // Latency indicator
+        const lat = isMe ? myLatency : peerLatency[m.socketId];
+        if (lat != null) {
+          const latSpan = document.createElement('span');
+          latSpan.className = 'ch-latency ' + latencyClass(lat);
+          latSpan.textContent = lat + 'ms';
+          row.appendChild(latSpan);
+        }
+
         // Tags (hidden on hover in favour of admin buttons)
         const tags = document.createElement('div');
         tags.className = 'ch-member-tags';
@@ -1950,6 +1974,8 @@ function memberCardHTML(m, isMe) {
   const vol        = localVolume[m.socketId] ?? 100;
   const volCustom  = !isMe && vol !== 100;
   const srvMuted   = m.serverMuted || false;
+  const lat        = isMe ? myLatency : peerLatency[m.socketId];
+  const latCls     = latencyClass(lat);
 
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
     id="card-${m.socketId}"
@@ -1970,6 +1996,7 @@ function memberCardHTML(m, isMe) {
       ${!isMe&&srvMuted?'<span class="tag tag-server-muted">Server Muted</span>':''}
       ${locMuted?'<span class="tag tag-local-muted">Muted by you</span>':''}
     </div>
+    ${lat!=null?`<div class="latency-badge ${latCls}">${lat} ms</div>`:''}
   </div>`;
 }
 
@@ -1980,6 +2007,7 @@ function joinParty(partyId) {
   socket.emit('join-party', { partyId });
   playSound('join');
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  startPingLoop();
 }
 
 function leaveParty() {
@@ -1988,6 +2016,8 @@ function leaveParty() {
   socket.emit('leave-party');
   playSound('leave');
   currentParty = null;
+  stopPingLoop();
+  Object.keys(peerLatency).forEach(k => delete peerLatency[k]);
   renderSidebar(); renderMainPanel();
 }
 
@@ -2028,7 +2058,7 @@ socket.on('party-update', (partyList) => {
 
 socket.on('party-peers',      () => renderMainPanel());
 socket.on('peer-joined',      () => { playSound('join'); renderMainPanel(); });
-socket.on('peer-left', ({ socketId }) => { removePeerPlayer(socketId); playSound('leave'); renderMainPanel(); });
+socket.on('peer-left', ({ socketId }) => { delete peerLatency[socketId]; removePeerPlayer(socketId); playSound('leave'); renderMainPanel(); });
 socket.on('broadcaster-left', () => renderMainPanel());
 socket.on('broadcaster-paused', ({ socketId, paused }) => renderMainPanel());
 socket.on('broadcaster-joined', ({ socketId, username }) => {
@@ -2036,6 +2066,69 @@ socket.on('broadcaster-joined', ({ socketId, username }) => {
   notify(`📡 ${username} is now broadcasting`);
   renderMainPanel();
 });
+
+// ── Latency measurement ──
+socket.on('latency-update', ({ socketId, latency }) => {
+  peerLatency[socketId] = latency;
+});
+
+function startPingLoop() {
+  if (pingInterval) return;
+  measurePing();
+  pingInterval = setInterval(measurePing, 3000);
+}
+
+function stopPingLoop() {
+  if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+  myLatency = null;
+}
+
+function measurePing() {
+  const t0 = performance.now();
+  socket.emit('ping-check', () => {
+    myLatency = Math.round(performance.now() - t0);
+    socket.emit('latency-report', { latency: myLatency });
+    updateLatencyDisplay();
+  });
+}
+
+function latencyClass(ms) {
+  if (ms == null) return '';
+  if (ms < 100) return 'latency-good';
+  if (ms <= 200) return 'latency-medium';
+  return 'latency-bad';
+}
+
+function updateLatencyDisplay() {
+  // Update own card latency badge
+  const myCard = document.getElementById('card-' + socket.id);
+  if (myCard) {
+    let badge = myCard.querySelector('.latency-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'latency-badge';
+      myCard.appendChild(badge);
+    }
+    badge.className = 'latency-badge ' + latencyClass(myLatency);
+    badge.textContent = myLatency != null ? myLatency + ' ms' : '';
+  }
+  // Update peer card latency badges
+  Object.entries(peerLatency).forEach(([sid, ms]) => {
+    const card = document.getElementById('card-' + sid);
+    if (card) {
+      let badge = card.querySelector('.latency-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'latency-badge';
+        card.appendChild(badge);
+      }
+      badge.className = 'latency-badge ' + latencyClass(ms);
+      badge.textContent = ms + ' ms';
+    }
+  });
+  // Refresh sidebar to show updated latency values
+  renderSidebar();
+}
 
 function notify(msg, type = '') {
   const el = document.createElement('div');
