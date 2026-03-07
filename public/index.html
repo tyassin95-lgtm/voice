@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Oathly Voice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="/voice/vad/ort.wasm.min.js"></script>
+<script src="/voice/vad/vad.bundle.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e17; --bg2:#111827; --panel:#1a1f2e; --panel2:#232a3d;
+    --border:#2d3748; --border2:rgba(139,92,246,0.3);
+    --accent:#8b5cf6; --accent2:#a78bfa; --accent-dim:#4c1d95; --accent-glow:rgba(139,92,246,0.4);
+    --accent-blue:#3b82f6; --accent-blue-glow:rgba(59,130,246,0.3);
+    --red:#ef4444; --red-dim:rgba(239,68,68,0.15);
+    --green:#4ade80; --green-dim:rgba(74,222,128,0.15);
+    --yellow:#f59e0b; --yellow-dim:rgba(245,158,11,0.15);
+    --text:#f3f4f6; --text-2:#9ca3af; --text-3:#6b7280;
+    --header-h:58px; --bottom-h:68px; --sidebar-w:248px;
+    --radius:12px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;overscroll-behavior:none}
+  /* Grid overlay */
+  body::before{content:'';position:fixed;inset:0;
+    background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+    background-size:50px 50px;opacity:0.03;z-index:0;pointer-events:none}
+  /* Blobs */
+  .blob{position:fixed;width:600px;height:600px;border-radius:50%;filter:blur(100px);opacity:0.15;pointer-events:none;z-index:0}
+  .blob-purple{background:radial-gradient(circle,var(--accent) 0%,transparent 70%);top:-200px;left:-200px;animation:blobFloat 20s infinite ease-in-out}
+  .blob-blue{background:radial-gradient(circle,var(--accent-blue) 0%,transparent 70%);bottom:-200px;right:-200px;animation:blobFloat 20s infinite ease-in-out reverse;animation-delay:-10s}
+  @keyframes blobFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(50px,-50px) scale(1.1)}66%{transform:translate(-30px,30px) scale(0.9)}}
+  ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+  /* ═══ MODAL BASE ═══ */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);overflow-y:auto}
+  .modal-overlay.hidden{display:none}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:36px;width:100%;max-width:420px;max-height:calc(100vh - 40px);overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 0 1px var(--border2);animation:slideUp 0.5s ease-out;margin:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+  .modal::-webkit-scrollbar{width:6px}
+  .modal::-webkit-scrollbar-track{background:transparent}
+  .modal::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+  .modal::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
+  @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+  .modal::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:60%;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .modal-title{font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+  .modal-sub{font-size:12px;color:var(--text-3);margin-bottom:24px}
+  .modal-tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg2);border-radius:var(--radius-sm);padding:4px}
+  .modal-tab{flex:1;padding:8px;border:none;background:transparent;color:var(--text-2);font-family:'Inter',sans-serif;font-size:13px;font-weight:500;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s}
+  .modal-tab.active{background:var(--panel2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.3)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:11px;font-weight:600;letter-spacing:0.8px;color:var(--text-3);text-transform:uppercase;margin-bottom:6px}
+  .field input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:11px 14px;font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;-webkit-appearance:none}
+  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,0.2)}
+  .field input::placeholder{color:var(--text-3)}
+  .modal-err{font-size:12px;color:var(--red);margin-bottom:12px;min-height:18px}
+  .btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-blue));border:none;border-radius:var(--radius);color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;padding:14px;cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 12px rgba(139,92,246,0.35)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(139,92,246,0.45)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-ghost{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--text-2);font-family:'Inter',sans-serif;font-size:13px;padding:11px;cursor:pointer;transition:all 0.15s;margin-top:8px}
+  .btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+
+  /* ═══ SETTINGS MODAL ═══ */
+  .settings-section{margin-bottom:20px}
+  .settings-section-title{font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text-3);text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .setting-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px}
+  .setting-label{font-size:13px;color:var(--text-2)}
+  .setting-label small{display:block;font-size:11px;color:var(--text-3);margin-top:2px}
+  .toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+  .toggle input{opacity:0;width:0;height:0}
+  .toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:22px;cursor:pointer;transition:0.2s}
+  .toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.2s}
+  .toggle input:checked + .toggle-slider{background:var(--accent)}
+  .toggle input:checked + .toggle-slider::before{transform:translateX(18px)}
+  .slider-row{margin-bottom:14px}
+  .slider-row .slider-header{display:flex;justify-content:space-between;margin-bottom:6px}
+  .slider-row .slider-header span{font-size:12px;color:var(--text-2)}
+  .slider-row .slider-val{color:var(--accent2);font-weight:600}
+  .range-input{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border2);border-radius:4px;outline:none;cursor:pointer}
+  .range-input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px var(--accent-glow)}
+  .range-input::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+  .ptt-key-btn{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:6px 14px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;min-width:80px;text-align:center}
+  .ptt-key-btn.listening{border-color:var(--accent);color:var(--accent);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--accent-glow)}50%{box-shadow:0 0 0 6px transparent}}
+
+  /* ═══ LOGIN ═══ */
+  #login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:var(--bg);padding:24px}
+  .login-card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:36px 32px 32px;text-align:center;position:relative;box-shadow:0 0 60px rgba(124,108,242,0.08),0 24px 48px rgba(0,0,0,0.4)}
+  .login-card::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:60%;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .login-logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
+  .login-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent-dim),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 20px var(--accent-glow)}
+  .login-brand{font-family:'Inter',sans-serif;font-size:28px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent-blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.03em}
+  .login-brand span{-webkit-text-fill-color:transparent}
+  .login-sub{font-size:13px;color:var(--text-2);margin-bottom:24px;margin-top:4px}
+
+  /* ═══ APP SHELL ═══ */
+  #app{display:none;position:fixed;inset:0;z-index:1}
+  .app-header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:rgba(10,14,23,0.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;z-index:50}
+  .menu-btn{display:none;width:38px;height:38px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-2);font-size:16px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation}
+  .header-logo{display:flex;align-items:center;gap:9px;white-space:nowrap}
+  .header-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--accent-dim),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 0 12px var(--accent-glow)}
+  .header-brand{font-family:'Inter',sans-serif;font-size:16px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent-blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.02em}
+  .header-brand span{-webkit-text-fill-color:transparent}
+  .header-sep{flex:1}
+
+  .header-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:11px;font-weight:600;letter-spacing:0.3px;color:var(--text-2);transition:all 0.2s;user-select:none;white-space:nowrap;touch-action:manipulation}
+  .header-pill:hover{border-color:var(--accent-dim);color:var(--accent2)}
+  .header-pill.active-red{background:rgba(224,85,85,0.12);border-color:var(--red);color:var(--red)}
+  .header-pill.active-yellow{background:var(--yellow-dim);border-color:var(--yellow);color:var(--yellow)}
+  .pill-dot{width:6px;height:6px;border-radius:50%;background:var(--text-3);flex-shrink:0;transition:all 0.2s}
+  .header-pill.active-red .pill-dot{background:var(--red);box-shadow:0 0 6px var(--red);animation:blink 1.4s infinite}
+  .header-pill.active-yellow .pill-dot{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  .user-chip{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;background:var(--panel2);border:1px solid var(--border);border-radius:20px;min-width:0;cursor:pointer;transition:border-color 0.15s}
+  .user-chip:hover{border-color:var(--border2)}
+  .chip-avatar{width:26px;height:26px;background:linear-gradient(135deg,var(--accent-dim),var(--accent));border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+  .chip-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
+
+  /* ═══ SIDEBAR ═══ */
+  .sidebar{position:fixed;top:var(--header-h);left:0;bottom:0;width:var(--sidebar-w);background:var(--panel);border-right:1px solid var(--border);overflow-y:auto;padding:20px 0 calc(var(--bottom-h)+12px);z-index:40;transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);-webkit-overflow-scrolling:touch}
+  #party-list{display:flex;flex-direction:column;min-height:min-content}
+  .sidebar-label{font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text-3);text-transform:uppercase;padding:0 16px;margin-bottom:8px}
+  .channel-item{margin:1px 8px;padding:9px 10px;display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:var(--radius-sm);transition:all 0.15s;touch-action:manipulation}
+  .channel-item:hover{background:var(--panel2)}
+  .channel-item.active{background:rgba(139,92,246,0.1);border-left:2px solid var(--accent)}
+  .ch-icon{font-size:15px;color:var(--text-3);width:18px;text-align:center;flex-shrink:0;transition:color 0.15s}
+  .channel-item:hover .ch-icon,.channel-item.active .ch-icon{color:var(--accent2)}
+  .ch-label{font-size:13px;font-weight:500;color:var(--text-2);flex:1;transition:color 0.15s}
+  .channel-item:hover .ch-label,.channel-item.active .ch-label{color:var(--text)}
+  .ch-count{font-size:11px;font-weight:600;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:1px 8px;color:var(--text-3);min-width:24px;text-align:center}
+  .channel-item.active .ch-count{background:var(--accent-dim);border-color:var(--accent);color:var(--accent2)}
+  .leave-btn{margin:8px 8px 0;width:calc(100% - 16px);background:transparent;border:1px dashed var(--border);border-radius:var(--radius-sm);color:var(--text-3);padding:9px 12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;display:flex;align-items:center;gap:8px;transition:all 0.15s}
+  .leave-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:39}
+  .ch-members{padding:0 8px 4px 36px;display:none}
+  .channel-item.active ~ .ch-members,.channel-item.has-members ~ .ch-members{display:block}
+  .ch-member-row{display:flex;align-items:center;justify-content:space-between;padding:3px 4px;border-radius:4px;gap:6px}
+  .ch-member-row:hover{background:var(--panel2)}
+  .ch-member-name{font-size:11px;color:var(--text-3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ch-member-name.is-speaking{color:var(--green)}
+  .ch-member-name.is-you{color:var(--accent2)}
+  .ch-member-tags{display:flex;gap:3px;flex-shrink:0}
+  .ch-tag{font-size:8px;font-weight:700;padding:1px 5px;border-radius:10px;letter-spacing:0.3px}
+  .ch-tag-muted{background:var(--red-dim);color:var(--red)}
+  .ch-tag-admin{background:rgba(124,108,242,0.2);color:var(--accent2)}
+  .ch-admin-btns{display:none;gap:3px;flex-shrink:0}
+  .ch-member-row:hover .ch-admin-btns{display:flex}
+  .ch-member-row:hover .ch-member-tags{display:none}
+  .ch-admin-btn{background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text-3);font-size:9px;padding:2px 6px;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+  .ch-admin-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+  .ch-admin-btn.mute-btn:hover{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-dim)}
+  
+  /* Drag and drop styles */
+  .ch-member-row[draggable="true"]{cursor:move}
+  .ch-member-row.dragging{opacity:0.4}
+  .channel-item.drag-over{background:rgba(139,92,246,0.15);border-left:2px solid var(--accent);border-right:2px solid var(--accent)}
+  .ch-member-name.self-muted{opacity:0.6}
+  .ch-member-name.self-deafened{opacity:0.6}
+  .ch-tag-deafened{background:rgba(224,85,85,0.1);border:1px solid #664;color:#aa8}
+
+  /* ═══ MAIN PANEL ═══ */
+  .main-panel{position:fixed;top:var(--header-h);left:var(--sidebar-w);right:0;bottom:var(--bottom-h);overflow-y:auto;padding:28px 24px;-webkit-overflow-scrolling:touch}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:65%;text-align:center}
+  .empty-icon{font-size:52px;margin-bottom:16px;opacity:0.2}
+  .empty-title{font-family:'Inter',sans-serif;font-size:17px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+  .empty-sub{font-size:13px;color:var(--text-3)}
+  .party-header{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+  .party-header-icon{width:38px;height:38px;background:rgba(124,108,242,0.12);border:1px solid var(--accent-dim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .party-title{font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text)}
+  .party-sub{font-size:12px;color:var(--text-3);margin-top:2px}
+  .members-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+
+  /* ═══ MEMBER CARDS ═══ */
+  .member-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);padding:18px 14px 14px;text-align:center;position:relative;cursor:pointer;transition:all 0.25s ease;user-select:none}
+  .member-card:hover{background:var(--panel2);border-color:var(--border2);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+  .member-card.speaking{border-color:var(--green);box-shadow:0 0 16px rgba(74,222,128,0.15)}
+  .member-card.broadcaster-card{border-color:rgba(224,85,85,0.5)}
+  .member-card.user-muted-local{opacity:0.55}
+  .member-card.server-muted-card{border-color:var(--yellow);opacity:0.7}
+  .member-avatar{width:52px;height:52px;border-radius:50%;background:var(--panel);border:2px solid var(--border2);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--accent2);transition:all 0.2s}
+  .member-card.speaking .member-avatar{border-color:var(--green);box-shadow:0 0 10px rgba(74,222,128,0.3)}
+  .member-card.broadcaster-card .member-avatar{border-color:var(--red)}
+  .member-avatar.vol-custom::after{content:attr(data-vol);position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--accent2)}
+  .member-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;word-break:break-word}
+  .member-you{font-size:11px;color:var(--text-3)}
+  .member-tags{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .tag{font-size:9px;font-weight:600;letter-spacing:0.5px;padding:2px 7px;border-radius:20px;text-transform:uppercase}
+  .tag-broadcaster{background:rgba(224,85,85,0.15);border:1px solid rgba(224,85,85,0.4);color:var(--red)}
+  .tag-speaking{background:var(--green-dim);border:1px solid rgba(74,222,128,0.4);color:var(--green)}
+  .tag-muted{background:rgba(80,80,100,0.2);border:1px solid #444;color:var(--text-3)}
+  .tag-deafened{background:rgba(224,85,85,0.1);border:1px solid #664;color:#aa8}
+  .tag-local-muted{background:rgba(224,85,85,0.1);border:1px solid rgba(224,85,85,0.3);color:var(--red)}
+  .tag-server-muted{background:var(--yellow-dim);border:1px solid rgba(245,197,66,0.4);color:var(--yellow)}
+  .tag-admin{background:rgba(124,108,242,0.15);border:1px solid rgba(124,108,242,0.4);color:var(--accent2)}
+  .tag-ptt{background:rgba(124,108,242,0.1);border:1px solid rgba(124,108,242,0.3);color:var(--accent2)}
+
+  .broadcast-banner{background:rgba(224,85,85,0.07);border:1px solid rgba(224,85,85,0.3);border-radius:var(--radius-sm);padding:10px 16px;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+  .bc-banner-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.4s infinite;flex-shrink:0}
+  .bc-banner-text{font-size:11px;font-weight:600;letter-spacing:0.5px;color:var(--red)}
+
+  /* ═══ USER POPOVER ═══ */
+  .popover-overlay{display:none;position:fixed;inset:0;z-index:100}
+  .popover-overlay.open{display:block}
+  .popover{position:fixed;background:var(--panel2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px;width:230px;z-index:101;box-shadow:0 12px 40px rgba(0,0,0,0.5);animation:popIn 0.15s ease;display:none}
+  @keyframes popIn{from{opacity:0;transform:scale(0.95) translateY(-4px)}to{opacity:1;transform:none}}
+  .popover-name{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .popover-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent-dim),var(--accent));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+  .popover-row{margin-bottom:12px}
+  .popover-row-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text-3);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+  .vol-value{color:var(--accent2);font-weight:700}
+  .vol-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border2);border-radius:4px;outline:none;cursor:pointer}
+  .vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 8px var(--accent-glow)}
+  .vol-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+  .popover-btn{width:100%;padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-2);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:6px}
+  .popover-btn:hover{border-color:var(--border2);color:var(--text)}
+  .popover-btn.danger:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+  .popover-btn.warn:hover{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-dim)}
+  .popover-btn.is-active{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+  .popover-btn.is-active:hover{background:rgba(224,85,85,0.25)}
+  .popover-divider{border:none;border-top:1px solid var(--border);margin:10px 0}
+
+
+  /* ═══ PTT TOUCH BUTTON (mobile) ═══ */
+  #ptt-touch-btn {
+    display: none;
+    position: fixed;
+    bottom: calc(var(--bottom-h) + 16px);
+    left: 50%; transform: translateX(-50%);
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-dim), var(--accent));
+    border: 3px solid var(--accent2);
+    box-shadow: 0 0 24px var(--accent-glow), 0 6px 20px rgba(0,0,0,0.4);
+    color: #fff; font-size: 28px;
+    cursor: pointer; z-index: 200;
+    align-items: center; justify-content: center;
+    transition: all 0.1s; touch-action: none; user-select: none;
+  }
+  #ptt-touch-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 40px var(--accent-glow), 0 6px 20px rgba(0,0,0,0.4);
+    transform: translateX(-50%) scale(1.08);
+    border-color: #fff;
+  }
+  @media (max-width: 640px) {
+    .bottom-controls.ptt-active { padding-bottom: 108px; }
+  }
+
+  /* ═══ PTT INDICATOR ═══ */
+  #ptt-indicator{position:fixed;bottom:calc(var(--bottom-h) + 12px);left:50%;transform:translateX(-50%);background:rgba(124,108,242,0.9);color:#fff;font-size:12px;font-weight:600;padding:6px 16px;border-radius:20px;z-index:200;display:none;backdrop-filter:blur(8px);box-shadow:0 4px 16px var(--accent-glow)}
+  #ptt-indicator.visible{display:block}
+
+  /* ═══ BOTTOM CONTROLS ═══ */
+  .bottom-controls{position:fixed;bottom:0;left:var(--sidebar-w);right:0;height:var(--bottom-h);background:rgba(17,24,39,0.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:12px;z-index:40;padding:0 20px}
+  .ctrl-btn{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 22px;cursor:pointer;transition:all 0.15s;touch-action:manipulation;user-select:none;min-width:78px}
+  .ctrl-btn:hover{border-color:var(--border2);background:var(--panel)}
+  .ctrl-btn:active{transform:scale(0.97)}
+  .ctrl-btn.active-red{border-color:rgba(224,85,85,0.5);background:var(--red-dim)}
+  .ctrl-btn.active-accent{border-color:var(--accent);background:rgba(124,108,242,0.12)}
+  .ctrl-icon{font-size:20px;line-height:1}
+  .ctrl-label{font-size:9px;font-weight:600;letter-spacing:1px;color:var(--text-3);text-transform:uppercase}
+  .ctrl-btn.active-red .ctrl-label{color:var(--red)}
+  .ctrl-btn.active-accent .ctrl-label{color:var(--accent2)}
+  .status-bar{position:fixed;bottom:0;left:0;width:var(--sidebar-w);height:var(--bottom-h);background:rgba(22,23,31,0.97);backdrop-filter:blur(12px);border-top:1px solid var(--border);border-right:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:8px;z-index:41}
+  .status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .status-dot.connected{background:var(--green);box-shadow:0 0 5px rgba(74,222,128,0.5)}
+  .status-dot.disconnected{background:var(--red)}
+  .status-text{font-size:11px;color:var(--text-3)}
+
+
+  /* ═══ BROADCAST MODAL ═══ */
+  .bc-modal { max-width: 460px; }
+  .bc-party-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    margin: 12px 0 16px;
+  }
+  .bc-party-btn {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-2); font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 8px 4px; cursor: pointer; transition: all 0.15s; text-align: center;
+    user-select: none; position: relative;
+  }
+  .bc-party-btn:hover { border-color: var(--border2); color: var(--text); }
+  .bc-party-btn.selected {
+    background: rgba(139,92,246,0.15); border-color: var(--accent); color: var(--accent2);
+  }
+  .bc-party-btn .bc-party-count {
+    display: block; font-size: 9px; font-weight: 400; color: var(--text-3); margin-top: 2px;
+  }
+  .bc-party-btn.selected .bc-party-count { color: var(--accent2); opacity: 0.7; }
+  .bc-all-btn {
+    grid-column: 1 / -1; padding: 10px; font-size: 13px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-2); font-family: 'Inter', sans-serif; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; text-align: center; user-select: none;
+  }
+  .bc-all-btn:hover { border-color: var(--border2); color: var(--text); }
+  .bc-all-btn.selected {
+    background: rgba(139,92,246,0.15); border-color: var(--accent); color: var(--accent2);
+  }
+  .bc-selected-label {
+    font-size: 11px; color: var(--text-3); margin-bottom: 4px; min-height: 16px;
+  }
+  /* Paused state on header pill */
+  .header-pill.active-paused {
+    background: rgba(245,158,11,0.12); border-color: var(--yellow); color: var(--yellow);
+  }
+  .header-pill.active-paused .pill-dot {
+    background: var(--yellow); box-shadow: 0 0 6px var(--yellow); animation: none;
+  }
+
+  /* ═══ NOTIFICATIONS ═══ */
+  #notifications{position:fixed;bottom:calc(var(--bottom-h)+12px);right:12px;display:flex;flex-direction:column;gap:8px;z-index:999;max-width:280px}
+  .notif{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--text);animation:slideIn 0.22s ease;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+  .notif.error{border-left-color:var(--red)}
+  .notif.success{border-left-color:var(--green)}
+  .notif.warn{border-left-color:var(--yellow)}
+  @keyframes slideIn{from{transform:translateX(12px);opacity:0}to{transform:none;opacity:1}}
+
+  /* ═══ LEAVE + PAUSE BROADCAST BUTTONS ═══ */
+  .ctrl-btn-leave { border-color: rgba(239,68,68,0.45) !important; background: rgba(239,68,68,0.08) !important; }
+  .ctrl-btn-leave .ctrl-label { color: var(--red) !important; }
+  .ctrl-btn-leave:hover { background: rgba(239,68,68,0.18) !important; border-color: var(--red) !important; }
+  #btn-bc-pause.bc-paused { border-color: var(--yellow) !important; background: rgba(245,158,11,0.12) !important; }
+  #btn-bc-pause.bc-paused .ctrl-label { color: var(--yellow) !important; }
+
+  /* ═══ MOBILE ═══ */
+  @media(max-width:640px){
+    :root{ --header-h:52px; --bottom-h:70px; }
+    /* Sidebar: slide-over, no layout shift */
+    .menu-btn { display:flex }
+    .bc-label { display:none }
+    .sidebar { transform:translateX(-100%); width:82vw; max-width:300px; z-index:50 }
+    .sidebar.open { transform:translateX(0) }
+    .sidebar-overlay.open { display:block }
+
+    /* Main fills full width */
+    .main-panel { left:0; right:0; padding:14px 12px; bottom:var(--bottom-h) }
+
+    /* Bottom bar: scrollable row, buttons shrink */
+    .bottom-controls {
+      left:0; right:0; padding:0 8px; gap:6px;
+      overflow-x:auto; -webkit-overflow-scrolling:touch;
+      justify-content:flex-start;
+      /* hide scrollbar but keep scroll */
+      scrollbar-width:none;
+    }
+    .bottom-controls::-webkit-scrollbar { display:none }
+    .ctrl-btn { padding:8px 12px; min-width:56px; flex-shrink:0; border-radius:10px }
+    .ctrl-icon { font-size:18px }
+    .ctrl-label { font-size:8px; letter-spacing:0.4px }
+
+    /* Status bar hidden */
+    .status-bar { display:none }
+
+    /* Member cards: 2 columns */
+    .members-grid { grid-template-columns:repeat(2,1fr); gap:10px }
+    .member-card { padding:14px 10px 12px }
+    .member-avatar { width:44px; height:44px; font-size:15px }
+    .member-name { font-size:12px }
+
+    /* Header tighter */
+    .header-brand { font-size:14px }
+    .chip-name { max-width:68px; font-size:12px }
+    .header-pill { padding:5px 10px; font-size:10px }
+
+    /* Broadcast modal grid: 3 cols on mobile */
+    .bc-party-grid { grid-template-columns:repeat(3,1fr) }
+
+    /* Modals full-width on small screens with better scrolling */
+    .modal-overlay { padding:12px; align-items:flex-start }
+    .modal { padding:24px 16px 20px; border-radius:14px; max-height:calc(100vh - 24px); margin-top:12px }
+    
+    /* Settings sections more compact on mobile */
+    .settings-section { margin-bottom:16px }
+    .setting-row { margin-bottom:10px }
+    .slider-row { margin-bottom:12px }
+
+    /* Notifications */
+    #notifications { max-width:220px; right:8px; bottom:calc(var(--bottom-h)+8px) }
+    #ptt-indicator { bottom:calc(var(--bottom-h)+8px) }
+  }
+
+  /* Very small phones */
+  @media(max-width:380px){
+    .ctrl-btn { padding:7px 9px; min-width:48px }
+    .ctrl-icon { font-size:16px }
+    .ctrl-label { font-size:7px }
+    .members-grid { grid-template-columns:repeat(2,1fr); gap:8px }
+    .bc-party-grid { grid-template-columns:repeat(2,1fr) }
+  }
+</style>
+</head>
+<body>
+
+<div class="blob blob-purple"></div>
+<div class="blob blob-blue"></div>
+
+<!-- ═══ AUTH MODAL ═══ -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <div class="login-logo" style="justify-content:flex-start;margin-bottom:4px">
+      <div class="login-icon" style="width:36px;height:36px;font-size:18px">🎙️</div>
+      <div class="login-brand" style="font-size:20px">Oathly<span>Voice</span></div>
+    </div>
+    <div class="modal-sub">Sign in or continue as guest</div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchAuthTab('login')">Sign In</button>
+      <button class="modal-tab" onclick="switchAuthTab('register')">Register</button>
+      <button class="modal-tab" onclick="switchAuthTab('guest')">Guest</button>
+    </div>
+
+    <!-- Login -->
+    <div id="tab-login">
+      <div class="field"><label>Username</label><input type="text" id="login-user" placeholder="Your username" autocomplete="username"/></div>
+      <div class="field"><label>Password</label><input type="password" id="login-pass" placeholder="Password" autocomplete="current-password"/></div>
+      <div class="modal-err" id="login-err"></div>
+      <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    </div>
+
+    <!-- Register -->
+    <div id="tab-register" style="display:none">
+      <div class="field"><label>Username</label><input type="text" id="reg-user" placeholder="Choose a username"/></div>
+      <div class="field"><label>Password</label><input type="password" id="reg-pass" placeholder="Choose a password"/></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="reg-pass2" placeholder="Repeat password"/></div>
+      <div class="modal-err" id="reg-err"></div>
+      <button class="btn-primary" onclick="doRegister()">Create Account</button>
+    </div>
+
+    <!-- Guest -->
+    <div id="tab-guest" style="display:none">
+      <div class="field"><label>Display Name</label><input type="text" id="guest-name" placeholder="Enter your name" maxlength="24"/></div>
+      <div class="modal-err" id="guest-err"></div>
+      <button class="btn-primary" onclick="doGuest()">Join as Guest</button>
+      <p style="font-size:11px;color:var(--text-3);margin-top:12px;text-align:center">Settings won't be saved as a guest</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS MODAL ═══ -->
+<div class="modal-overlay hidden" id="settings-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Settings</div>
+      <button onclick="closeSettings()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="modal-sub" id="settings-sub">Adjustments are applied live</div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Microphone</div>
+
+      <div class="slider-row">
+        <div class="slider-header"><span>Mic sensitivity</span><span class="slider-val" id="sens-val">50</span></div>
+        <input type="range" class="range-input" id="sens-slider" min="1" max="100" value="50" oninput="onSensChange(this.value)">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px"><span>Strict</span><span id="sens-mode" style="color:var(--accent2);font-weight:600">Normal</span><span>Sensitive</span></div>
+      </div>
+      <div id="sens-hint" style="font-size:11px;color:var(--text-3);margin-top:2px;margin-bottom:10px;line-height:1.4;padding:6px 8px;background:var(--bg2);border-radius:var(--radius-sm)">
+        If your mic picks up too much background noise, move the slider toward <strong style="color:var(--text-2)">Strict</strong>.
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-header"><span>Input volume boost</span><span class="slider-val" id="invol-val">100%</span></div>
+        <input type="range" class="range-input" id="invol-slider" min="50" max="300" value="100" oninput="onInputVolChange(this.value)">
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Keybinds</div>
+      <div class="setting-row">
+        <div class="setting-label">Toggle mute with key<small>Press to mute/unmute</small></div>
+        <label class="toggle"><input type="checkbox" id="toggle-mute-keybind" onchange="onMuteKeybindToggle()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row" id="mute-key-row" style="opacity:0.4;pointer-events:none">
+        <div class="setting-label">Mute Key</div>
+        <button class="ptt-key-btn" id="mute-key-btn" onclick="startListeningMuteKey()">KeyM</button>
+      </div>
+      <div class="setting-row" style="margin-top:8px">
+        <div class="setting-label">Pause/resume broadcast<small>Toggle broadcast pause with key</small></div>
+        <label class="toggle"><input type="checkbox" id="toggle-bcpause-keybind" onchange="onBcPauseKeybindToggle()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row" id="bcpause-key-row" style="opacity:0.4;pointer-events:none">
+        <div class="setting-label">Broadcast Pause Key</div>
+        <button class="ptt-key-btn" id="bcpause-key-btn" onclick="startListeningBcPauseKey()">KeyB</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Push to Talk</div>
+      <div class="setting-row">
+        <div class="setting-label">Keyboard PTT<small>Hold a key to transmit</small></div>
+        <label class="toggle"><input type="checkbox" id="toggle-ptt" onchange="onPttToggle()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row" id="ptt-key-row" style="opacity:0.4;pointer-events:none">
+        <div class="setting-label">PTT Key</div>
+        <button class="ptt-key-btn" id="ptt-key-btn" onclick="startListeningPTT()">Space</button>
+      </div>
+      <div class="setting-row" style="margin-top:4px">
+        <div class="setting-label">Touch PTT button<small>Shows a hold button on screen</small></div>
+        <label class="toggle"><input type="checkbox" id="toggle-ptt-touch" onchange="onPttTouchToggle()"><span class="toggle-slider"></span></label>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.5;padding:8px;background:var(--bg2);border-radius:var(--radius-sm)">
+        ⚠ Keyboard PTT won't fire when the browser is in the background. Use the <strong style="color:var(--text-2)">Touch PTT button</strong> while gaming — it stays on screen and works regardless of focus.
+      </div>
+    </div>
+
+    <div id="settings-save-row" style="display:none;margin-top:8px">
+      <button class="btn-primary" onclick="saveSettings()">Save to Account</button>
+    </div>
+    <button class="btn-ghost" onclick="closeSettings()">Close</button>
+    <button class="btn-ghost" onclick="logout()" style="margin-top:6px;border-color:var(--red);color:var(--red);opacity:0.7" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">Sign Out</button>
+  </div>
+</div>
+
+<!-- ═══ ADMIN MODAL ═══ -->
+<div class="modal-overlay hidden" id="admin-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">⚡ Admin Access</div>
+      <button onclick="closeAdminModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="modal-sub">Enter the admin password to gain moderation powers</div>
+    <div class="field"><label>Password</label><input type="password" id="admin-pass-input" placeholder="Admin password"/></div>
+    <div class="modal-err" id="admin-err"></div>
+    <button class="btn-primary" onclick="submitAdminPassword()">Unlock Admin</button>
+    <button class="btn-ghost" onclick="closeAdminModal()">Cancel</button>
+  </div>
+</div>
+
+
+<!-- ═══ BROADCAST MODAL ═══ -->
+<div class="modal-overlay hidden" id="broadcast-modal">
+  <div class="modal bc-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">📡 Start Broadcast</div>
+      <button onclick="closeBroadcastModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="modal-sub">Choose which parties receive your broadcast</div>
+
+    <div class="bc-party-grid" id="bc-party-grid">
+      <button class="bc-all-btn selected" id="bc-all-btn" onclick="bcToggleAll()">
+        🌐 &nbsp;Everyone (all parties)
+      </button>
+      <!-- Party buttons injected by JS -->
+    </div>
+    <div class="bc-selected-label" id="bc-selected-label">Broadcasting to all parties</div>
+
+    <button class="btn-primary" onclick="startBroadcast()" style="margin-top:8px">🔴 Go Live</button>
+    <button class="btn-ghost" onclick="closeBroadcastModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="app">
+  <header class="app-header">
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    <div class="header-logo">
+      <div class="header-icon">🎙️</div>
+      <div class="header-brand">Oathly<span>Voice</span></div>
+    </div>
+    <div class="header-sep"></div>
+    <div class="header-pill" id="admin-toggle" onclick="onAdminClick()">
+      <div class="pill-dot"></div>
+      <span class="bc-label">Admin</span>
+    </div>
+    <div class="header-pill" id="broadcaster-toggle" onclick="toggleBroadcaster()" style="display:none">
+      <div class="pill-dot"></div>
+      <span class="bc-label">Broadcast</span>
+    </div>
+    <div class="user-chip" onclick="openSettings()">
+      <div class="chip-avatar" id="header-avatar"></div>
+      <div class="chip-name" id="header-username"></div>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-label">Voice Channels</div>
+    <div id="party-list"></div>
+  </aside>
+
+  <main class="main-panel">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🔊</div>
+      <div class="empty-title">No channel selected</div>
+      <div class="empty-sub">Pick a voice channel from the left to join</div>
+    </div>
+    <div id="party-view" style="display:none"></div>
+  </main>
+
+  <div id="ptt-indicator">🎙 Transmitting…</div>
+  <button id="ptt-touch-btn" aria-label="Push to Talk"></button>
+
+  <div class="bottom-controls">
+    <div class="ctrl-btn" id="btn-mute" onclick="toggleMute()">
+      <span class="ctrl-icon" id="icon-mute">🎙️</span>
+      <span class="ctrl-label" id="label-mute">Mute</span>
+    </div>
+    <div class="ctrl-btn" id="btn-deaf" onclick="toggleDeafen()">
+      <span class="ctrl-icon" id="icon-deaf">🔊</span>
+      <span class="ctrl-label" id="label-deaf">Deafen</span>
+    </div>
+    <div class="ctrl-btn" id="btn-bc-pause" onclick="onBroadcastPauseToggle()" style="display:none">
+      <span class="ctrl-icon" id="icon-bc-pause">⏸️</span>
+      <span class="ctrl-label" id="label-bc-pause">Pause BC</span>
+    </div>
+    <div class="ctrl-btn" id="btn-settings" onclick="openSettings()">
+      <span class="ctrl-icon">⚙️</span>
+      <span class="ctrl-label">Settings</span>
+    </div>
+    <div class="ctrl-btn ctrl-btn-leave" id="btn-leave" onclick="leaveParty()" style="display:none">
+      <span class="ctrl-icon">📵</span>
+      <span class="ctrl-label">Leave</span>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-dot connected" id="status-dot"></div>
+    <span class="status-text" id="status-text">Connected</span>
+  </div>
+</div>
+
+<!-- ═══ USER POPOVER ═══ -->
+<div class="popover-overlay" id="popover-overlay" onclick="closePopover()"></div>
+<div class="popover" id="popover">
+  <div class="popover-name">
+    <div class="popover-avatar" id="pop-avatar"></div>
+    <span id="pop-name"></span>
+  </div>
+  <div class="popover-row">
+    <div class="popover-row-label"><span>Volume</span><span class="vol-value" id="pop-vol-value">100%</span></div>
+    <input type="range" class="vol-slider" id="pop-vol-slider" min="0" max="200" value="100" oninput="onVolSlider(this.value)"/>
+  </div>
+  <button class="popover-btn" id="pop-mute-btn" onclick="toggleLocalMute()">
+    <span id="pop-mute-icon">🔇</span><span id="pop-mute-label">Mute for me</span>
+  </button>
+  <hr class="popover-divider" id="pop-admin-divider" style="display:none">
+  <button class="popover-btn warn" id="pop-servermute-btn" onclick="adminServerMute()" style="display:none">
+    <span id="pop-sm-icon">🔕</span><span id="pop-sm-label">Server mute</span>
+  </button>
+  <button class="popover-btn danger" id="pop-kick-btn" onclick="adminKick()" style="display:none">
+    ✕ Disconnect user
+  </button>
+</div>
+
+<div id="notifications"></div>
+
+<script src="/voice/socket.io/socket.io.js"></script>
+<script>
+const socket = io({
+  transports: ['websocket', 'polling'],
+  path: '/voice/socket.io',
+  // Disable per-message compression for audio performance
+  perMessageDeflate: false
+});
+
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let myUsername    = '';
+let myPassword    = '';   // only set for registered users
+let isGuest       = true;
+let currentParty  = null;
+let isBroadcaster = false;
+let isMuted       = false;
+let isDeafened    = false;
+let isAdmin       = false;
+let serverMutedMe = false;
+let localStream   = null;
+let partyData     = {};
+let amISpeaking   = false;
+
+// Settings
+let settings = {
+  micSensitivity:   50,
+  pushToTalk:       false,
+  pttKey:           'Space',
+  pttTouch:         false,
+  muteKeybind:      false,
+  muteKey:          'KeyM',
+  bcPauseKeybind:   false,
+  bcPauseKey:       'KeyB',
+  inputVolume:      100
+};
+
+let pttActive      = false;
+let pttListening   = false;
+let muteKeyListening    = false;
+let bcPauseKeyListening = false;
+let inputGainNode  = null;
+
+// Audio pipeline
+let audioCtx       = null;
+let sourceNode     = null;
+let processorNode  = null;
+let SAMPLE_RATE    = 48000; // will be overwritten by actual audioCtx.sampleRate
+const CHUNK_MS     = 20;    // 20ms frames — standard VoIP frame size
+let CHUNK_SAMPLES  = Math.floor(SAMPLE_RATE * CHUNK_MS / 1000);
+
+const peerPlayers  = {};
+const localMuted   = {};
+const localVolume  = {};
+let popoverTarget  = null;
+
+// ═══════════════════════════════════════
+//  AUTH MODAL
+// ═══════════════════════════════════════
+function switchAuthTab(tab) {
+  ['login','register','guest'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.modal-tab').forEach((el, i) => {
+    el.classList.toggle('active', ['login','register','guest'][i] === tab);
+  });
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  if (!username || !password) return setErr('login-err', 'Fill in all fields');
+  const res = await fetch('/voice/api/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if (!data.ok) return setErr('login-err', data.error);
+  myUsername = data.username;
+  myPassword = password;
+  isGuest    = false;
+  applySettings(data.settings);
+  enterApp();
+}
+
+async function doRegister() {
+  const username = document.getElementById('reg-user').value.trim();
+  const password = document.getElementById('reg-pass').value;
+  const pass2    = document.getElementById('reg-pass2').value;
+  if (!username || !password) return setErr('reg-err', 'Fill in all fields');
+  if (password !== pass2)     return setErr('reg-err', 'Passwords do not match');
+  if (password.length < 4)    return setErr('reg-err', 'Password too short (min 4 chars)');
+  const res = await fetch('/voice/api/register', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if (!data.ok) return setErr('reg-err', data.error);
+  myUsername = username;
+  myPassword = password;
+  isGuest    = false;
+  notify('Account created! Welcome, ' + username, 'success');
+  enterApp();
+}
+
+function doGuest() {
+  const name = document.getElementById('guest-name').value.trim();
+  if (!name) return setErr('guest-err', 'Enter a name');
+  myUsername = name;
+  isGuest    = true;
+  enterApp();
+}
+
+function setErr(id, msg) {
+  document.getElementById(id).textContent = msg;
+}
+
+function enterApp() {
+  document.getElementById('auth-modal').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('header-username').textContent = myUsername;
+  document.getElementById('header-avatar').textContent   = myUsername[0].toUpperCase();
+  // Show/hide save button in settings based on account type
+  document.getElementById('settings-save-row').style.display = isGuest ? 'none' : 'block';
+  document.getElementById('settings-sub').textContent = isGuest
+    ? 'Guest — settings not saved'
+    : `Signed in as ${myUsername}`;
+  socket.emit('join', { username: myUsername });
+  initAudio();
+  initVAD();
+  applySettingsUI();
+  initPTTTouchButton();
+}
+
+// ═══════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════
+function applySettings(s) {
+  if (!s) return;
+  settings = { ...settings, ...s };
+}
+
+function applySettingsUI() {
+  document.getElementById('sens-slider').value   = settings.micSensitivity;
+  document.getElementById('sens-val').textContent= settings.micSensitivity;
+  updateSensitivityMode(settings.micSensitivity);
+  document.getElementById('invol-slider').value  = settings.inputVolume;
+  document.getElementById('invol-val').textContent = settings.inputVolume + '%';
+  document.getElementById('toggle-mute-keybind').checked = settings.muteKeybind || false;
+  document.getElementById('mute-key-btn').textContent    = settings.muteKey || 'KeyM';
+  document.getElementById('mute-key-row').style.opacity       = settings.muteKeybind ? '1' : '0.4';
+  document.getElementById('mute-key-row').style.pointerEvents = settings.muteKeybind ? '' : 'none';
+  document.getElementById('toggle-bcpause-keybind').checked    = settings.bcPauseKeybind || false;
+  document.getElementById('bcpause-key-btn').textContent       = settings.bcPauseKey || 'KeyB';
+  document.getElementById('bcpause-key-row').style.opacity       = settings.bcPauseKeybind ? '1' : '0.4';
+  document.getElementById('bcpause-key-row').style.pointerEvents = settings.bcPauseKeybind ? '' : 'none';
+  document.getElementById('toggle-ptt').checked        = settings.pushToTalk;
+  document.getElementById('toggle-ptt-touch').checked  = settings.pttTouch;
+  document.getElementById('ptt-key-btn').textContent    = settings.pttKey;
+  document.getElementById('ptt-key-row').style.opacity       = settings.pushToTalk ? '1' : '0.4';
+  document.getElementById('ptt-key-row').style.pointerEvents = settings.pushToTalk ? '' : 'none';
+  if (inputGainNode) inputGainNode.gain.value = settings.inputVolume / 100;
+}
+
+function openSettings() {
+  document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function onSensChange(val) {
+  settings.micSensitivity = parseInt(val);
+  document.getElementById('sens-val').textContent = val;
+  updateSensitivityMode(val);
+  // Reset VAD state
+  vadAttackCount = 0;
+  smoothedEnergy = 0;
+  // Update Silero VAD thresholds live — wider range for real impact
+  if (micVAD) {
+    const sens = settings.micSensitivity;
+    // positiveSpeechThreshold: sens 1 → 0.92 (very strict), sens 50 → 0.55, sens 100 → 0.15 (very sensitive)
+    const posThresh = 0.92 - (sens / 100) * 0.77;
+    // negativeSpeechThreshold: always ~0.15 below positive, clamped
+    const negThresh = Math.max(0.10, posThresh - 0.15);
+    // minSpeechFrames: strict = need more frames to confirm speech, sensitive = fewer
+    const minFrames = sens <= 25 ? 6 : (sens <= 50 ? 4 : 3);
+    micVAD.setOptions({
+      positiveSpeechThreshold: posThresh,
+      negativeSpeechThreshold: negThresh,
+      minSpeechFrames: minFrames
+    });
+  }
+}
+
+function updateSensitivityMode(val) {
+  const v = parseInt(val);
+  const el = document.getElementById('sens-mode');
+  if (!el) return;
+  if (v <= 20)      { el.textContent = 'Strict';    el.style.color = 'var(--green)'; }
+  else if (v <= 40) { el.textContent = 'Low';       el.style.color = 'var(--green)'; }
+  else if (v <= 60) { el.textContent = 'Normal';    el.style.color = 'var(--accent2)'; }
+  else if (v <= 80) { el.textContent = 'High';      el.style.color = 'var(--yellow)'; }
+  else              { el.textContent = 'Sensitive';  el.style.color = 'var(--red)'; }
+}
+
+function onInputVolChange(val) {
+  settings.inputVolume = parseInt(val);
+  document.getElementById('invol-val').textContent = val + '%';
+  if (inputGainNode) inputGainNode.gain.value = val / 100;
+}
+
+function onPttToggle() {
+  settings.pushToTalk = document.getElementById('toggle-ptt').checked;
+  document.getElementById('ptt-key-row').style.opacity       = settings.pushToTalk ? '1' : '0.4';
+  document.getElementById('ptt-key-row').style.pointerEvents = settings.pushToTalk ? '' : 'none';
+  if (settings.pushToTalk && localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = false);
+  } else if (!settings.pushToTalk && !settings.pttTouch && localStream && !isMuted) {
+    localStream.getAudioTracks().forEach(t => t.enabled = true);
+  }
+  updatePTTButton();
+}
+
+function onPttTouchToggle() {
+  settings.pttTouch = document.getElementById('toggle-ptt-touch').checked;
+  if (settings.pttTouch && localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = false);
+  } else if (!settings.pttTouch && !settings.pushToTalk && localStream && !isMuted) {
+    localStream.getAudioTracks().forEach(t => t.enabled = true);
+  }
+  updatePTTButton();
+}
+
+function startListeningPTT() {
+  pttListening = true;
+  const btn = document.getElementById('ptt-key-btn');
+  btn.textContent = 'Press a key…';
+  btn.classList.add('listening');
+}
+
+async function saveSettings() {
+  if (isGuest || !myPassword) return;
+  const res = await fetch('/voice/api/save-settings', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: myUsername, password: myPassword, settings })
+  });
+  const data = await res.json();
+  if (data.ok) notify('Settings saved ✓', 'success');
+  else notify('Could not save settings', 'error');
+}
+
+// ═══════════════════════════════════════
+//  MUTE KEYBIND
+// ═══════════════════════════════════════
+function onMuteKeybindToggle() {
+  settings.muteKeybind = document.getElementById('toggle-mute-keybind').checked;
+  document.getElementById('mute-key-row').style.opacity       = settings.muteKeybind ? '1' : '0.4';
+  document.getElementById('mute-key-row').style.pointerEvents = settings.muteKeybind ? '' : 'none';
+}
+
+function startListeningMuteKey() {
+  muteKeyListening = true;
+  const btn = document.getElementById('mute-key-btn');
+  btn.textContent = 'Press a key…';
+  btn.classList.add('listening');
+}
+
+function onBcPauseKeybindToggle() {
+  settings.bcPauseKeybind = document.getElementById('toggle-bcpause-keybind').checked;
+  document.getElementById('bcpause-key-row').style.opacity       = settings.bcPauseKeybind ? '1' : '0.4';
+  document.getElementById('bcpause-key-row').style.pointerEvents = settings.bcPauseKeybind ? '' : 'none';
+}
+
+function startListeningBcPauseKey() {
+  bcPauseKeyListening = true;
+  const btn = document.getElementById('bcpause-key-btn');
+  btn.textContent = 'Press a key…';
+  btn.classList.add('listening');
+}
+
+// ═══════════════════════════════════════
+//  PTT KEY HANDLING
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  // Capture PTT key assignment
+  if (pttListening) {
+    e.preventDefault();
+    settings.pttKey = e.code;
+    document.getElementById('ptt-key-btn').textContent = e.code;
+    document.getElementById('ptt-key-btn').classList.remove('listening');
+    pttListening = false;
+    return;
+  }
+  // Capture mute key assignment
+  if (muteKeyListening) {
+    e.preventDefault();
+    settings.muteKey = e.code;
+    document.getElementById('mute-key-btn').textContent = e.code;
+    document.getElementById('mute-key-btn').classList.remove('listening');
+    muteKeyListening = false;
+    return;
+  }
+  // Capture broadcast pause key assignment
+  if (bcPauseKeyListening) {
+    e.preventDefault();
+    settings.bcPauseKey = e.code;
+    document.getElementById('bcpause-key-btn').textContent = e.code;
+    document.getElementById('bcpause-key-btn').classList.remove('listening');
+    bcPauseKeyListening = false;
+    return;
+  }
+  // Ignore keybinds when typing in inputs
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  // Mute keybind toggle
+  if (settings.muteKeybind && e.code === settings.muteKey && !e.repeat) {
+    e.preventDefault();
+    toggleMute();
+  }
+  // Broadcast pause keybind toggle
+  if (settings.bcPauseKeybind && e.code === settings.bcPauseKey && !e.repeat) {
+    e.preventDefault();
+    onBroadcastPauseToggle();
+  }
+  // PTT transmit
+  if (settings.pushToTalk && e.code === settings.pttKey && !e.repeat) {
+    if (!pttActive) { pttActive = true; setPTTTransmit(true); }
+  }
+});
+
+document.addEventListener('keyup', e => {
+  if (settings.pushToTalk && e.code === settings.pttKey && pttActive) {
+    pttActive = false; setPTTTransmit(false);
+  }
+});
+
+function setPTTTransmit(active) {
+  if (!localStream) return;
+  localStream.getAudioTracks().forEach(t => t.enabled = active);
+  document.getElementById('ptt-indicator').classList.toggle('visible', active);
+  playSound(active ? 'ptt-on' : 'ptt-off');
+}
+
+function updatePTTButton() {
+  const btn      = document.getElementById('btn-mute');
+  const touchBtn = document.getElementById('ptt-touch-btn');
+  const anyPTT   = settings.pushToTalk || settings.pttTouch;
+
+  if (anyPTT) {
+    btn.classList.add('active-accent');
+    btn.classList.remove('active-red');
+    document.getElementById('icon-mute').textContent  = '🖐️';
+    document.getElementById('label-mute').textContent = 'PTT';
+  } else {
+    btn.classList.remove('active-accent');
+    applyAudioState();
+  }
+
+  // Show circular touch button only when touch PTT is enabled
+  if (settings.pttTouch) {
+    touchBtn.innerHTML = '🎙️';
+    touchBtn.style.display = 'flex';
+  } else {
+    touchBtn.style.display = 'none';
+  }
+}
+
+function initPTTTouchButton() {
+  const btn = document.getElementById('ptt-touch-btn');
+
+  btn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (!settings.pttTouch || pttActive) return;
+    pttActive = true;
+    btn.classList.add('active');
+    setPTTTransmit(true);
+  }, { passive: false });
+
+  btn.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (!pttActive) return;
+    pttActive = false;
+    btn.classList.remove('active');
+    setPTTTransmit(false);
+  }, { passive: false });
+
+  btn.addEventListener('touchcancel', e => {
+    if (!pttActive) return;
+    pttActive = false;
+    btn.classList.remove('active');
+    setPTTTransmit(false);
+  }, { passive: false });
+}
+
+// ═══════════════════════════════════════
+//  AUDIO
+// ═══════════════════════════════════════
+async function initAudio() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl:  true
+      },
+      video: false
+    });
+    buildAudioPipeline();
+    notify('Microphone ready', 'success');
+  } catch(e) {
+    notify('Microphone access denied', 'error');
+  }
+}
+
+
+// VAD state
+let vadActive       = false;
+let vadHoldTimer    = null;
+let vadAttackCount  = 0;
+let smoothedEnergy  = 0;
+let lastRmsEnergy   = 0;
+let micVAD          = null;
+
+async function initVAD() {
+  // Wait until vad bundle is ready (script may still be parsing)
+  let waited = 0;
+  while ((!window.vad || !window.vad.MicVAD) && waited < 5000) {
+    await new Promise(r => setTimeout(r, 100));
+    waited += 100;
+  }
+  if (!window.vad || !window.vad.MicVAD) {
+    console.warn('[VAD] vad-web not available, falling back to energy VAD');
+    return;
+  }
+  try {
+    const sens = settings.micSensitivity;
+    // positiveSpeechThreshold: sens 1 → 0.92, sens 50 → 0.55, sens 100 → 0.15
+    const initPosThresh = 0.92 - (sens / 100) * 0.77;
+    const initNegThresh = Math.max(0.10, initPosThresh - 0.15);
+    const initMinFrames = sens <= 25 ? 6 : (sens <= 50 ? 4 : 3);
+
+    micVAD = await window.vad.MicVAD.new({
+      // Reuse our existing stream instead of requesting a new one
+      getStream:    async () => localStream,
+      pauseStream:  async () => {},   // we manage the stream ourselves
+      resumeStream: async () => localStream,
+      // Use ScriptProcessor — no AudioWorklet / COOP headers needed
+      processorType: 'ScriptProcessor',
+      // Asset paths — served from our vad/ folder
+      baseAssetPath:    '/voice/vad/',
+      onnxWASMBasePath: '/voice/vad/',
+      model: 'legacy',
+      positiveSpeechThreshold: initPosThresh,
+      negativeSpeechThreshold: initNegThresh,
+      minSpeechFrames: initMinFrames,
+      preSpeechPadFrames: 5,
+      redemptionFrames: 8,
+      onSpeechStart: () => {
+        if (isMuted || settings.pushToTalk || settings.pttTouch) return;
+        // Energy gate: reject if current audio energy is below a sensitivity-scaled floor
+        // This catches Silero false-positives on low-level ambient hum
+        if (lastRmsEnergy > 0) {
+          // energyFloor: sens 1 → 0.025 (strict), sens 50 → 0.006, sens 100 → 0.001
+          const energyFloor = 0.025 * Math.pow(0.001 / 0.025, settings.micSensitivity / 100);
+          if (lastRmsEnergy < energyFloor) return; // too quiet, not real speech
+        }
+        vadActive = true;
+        if (!amISpeaking) { amISpeaking = true; updateMyCard(); }
+      },
+      onSpeechEnd: () => {
+        if (settings.pushToTalk || settings.pttTouch) return;
+        // Small hold before closing mic — avoids cutting off last word
+        clearTimeout(vadHoldTimer);
+        vadHoldTimer = setTimeout(() => {
+          vadActive = false;
+          amISpeaking = false;
+          updateMyCard();
+        }, 300);
+      },
+      onVADMisfire: () => {
+        vadActive = false;
+        amISpeaking = false;
+        updateMyCard();
+      }
+    });
+    await micVAD.start();
+    console.log('[VAD] Silero VAD running ✓');
+  } catch(e) {
+    console.warn('[VAD] Failed to init, falling back to energy VAD:', e);
+    micVAD = null;
+  }
+}
+
+function buildAudioPipeline() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Read the browser's actual sample rate — never assume 48000
+    SAMPLE_RATE   = audioCtx.sampleRate;
+    CHUNK_SAMPLES = Math.floor(SAMPLE_RATE * CHUNK_MS / 1000);
+    console.log(`[Audio] Native sample rate: ${SAMPLE_RATE}Hz, chunk: ${CHUNK_SAMPLES} samples (${CHUNK_MS}ms)`);
+  }
+
+  sourceNode    = audioCtx.createMediaStreamSource(localStream);
+  inputGainNode = audioCtx.createGain();
+  inputGainNode.gain.value = settings.inputVolume / 100;
+  sourceNode.connect(inputGainNode);
+
+  // ScriptProcessor: VAD gate + send
+  processorNode = audioCtx.createScriptProcessor(1024, 1, 1);
+  let sendBuf = new Float32Array(0);
+  processorNode.onaudioprocess = (e) => {
+    const samples = e.inputBuffer.getChannelData(0);
+
+    // Always compute RMS energy — used by Silero energy gate and fallback VAD
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+    const rms = Math.sqrt(sum / samples.length);
+    lastRmsEnergy = rms;
+
+    // Energy VAD fallback — only used if Silero VAD failed to load
+    if (!micVAD && !settings.pushToTalk && !settings.pttTouch && !isMuted) {
+      smoothedEnergy = rms > smoothedEnergy
+        ? rms * 0.9 + smoothedEnergy * 0.1
+        : rms * 0.03 + smoothedEnergy * 0.97;
+      const threshold = 0.05 * Math.pow(0.001 / 0.05, settings.micSensitivity / 100);
+      const attackNeeded = settings.micSensitivity <= 25 ? 6 : 4;
+      if (smoothedEnergy > threshold) {
+        vadAttackCount++;
+        clearTimeout(vadHoldTimer);
+        if (vadAttackCount >= attackNeeded && !vadActive) { vadActive = true; if (!amISpeaking) { amISpeaking = true; updateMyCard(); } }
+      } else {
+        vadAttackCount = 0;
+        if (vadActive) { clearTimeout(vadHoldTimer); vadHoldTimer = setTimeout(() => { vadActive = false; amISpeaking = false; updateMyCard(); }, 500); }
+      }
+    }
+
+    // Gate + send
+    const track = localStream.getAudioTracks()[0];
+    if (!track?.enabled || (!currentParty && !isBroadcaster) || serverMutedMe) return;
+    const shouldSend = (settings.pushToTalk || settings.pttTouch) ? true : vadActive;
+    if (!shouldSend) return;
+
+    // Efficient buffer concatenation using typed arrays
+    const newBuf = new Float32Array(sendBuf.length + samples.length);
+    newBuf.set(sendBuf);
+    newBuf.set(samples, sendBuf.length);
+    sendBuf = newBuf;
+
+    while (sendBuf.length >= CHUNK_SAMPLES) {
+      const chunk = sendBuf.slice(0, CHUNK_SAMPLES);
+      sendBuf = sendBuf.slice(CHUNK_SAMPLES);
+      socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, data: float32ToInt16(chunk).buffer });
+    }
+  };
+
+  inputGainNode.connect(processorNode);
+  processorNode.connect(audioCtx.destination);
+
+  if (settings.pushToTalk || settings.pttTouch) localStream.getAudioTracks().forEach(t => t.enabled = false);
+  updatePTTButton();
+}
+
+function float32ToInt16(f32) {
+  const i16 = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) { const s = Math.max(-1,Math.min(1,f32[i])); i16[i] = s<0?s*0x8000:s*0x7FFF; }
+  return i16;
+}
+function int16ToFloat32(i16) {
+  const f32 = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i]/(i16[i]<0?0x8000:0x7FFF);
+  return f32;
+}
+
+function updateMyCard() {
+  const card = document.getElementById(`card-${socket.id}`);
+  if (!card) return;
+  card.classList.toggle('speaking', amISpeaking && !isMuted && !settings.pushToTalk);
+  rebuildTags(card, true);
+}
+
+// ═══════════════════════════════════════
+//  PLAYBACK — Adaptive Jitter Buffer
+// ═══════════════════════════════════════
+// Single shared AudioContext for all peer playback (avoids browser limits)
+let playbackCtx = null;
+
+function getPlaybackCtx() {
+  if (!playbackCtx || playbackCtx.state === 'closed') {
+    playbackCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (playbackCtx.state === 'suspended') playbackCtx.resume();
+  return playbackCtx;
+}
+
+socket.on('audio-from', ({ from, chunk }) => {
+  if (isDeafened || localMuted[from]) return;
+  const ctx = getPlaybackCtx();
+
+  // Unpack: chunk is { rate, data } where rate is sender's sample rate
+  const senderRate = chunk.rate || SAMPLE_RATE;
+  const audioData  = chunk.data;
+
+  if (!peerPlayers[from]) {
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = (localVolume[from] ?? 100) / 100;
+    gainNode.connect(ctx.destination);
+    peerPlayers[from] = {
+      gainNode,
+      nextTime: 0,
+      // Adaptive jitter tracking
+      jitterBuffer: CHUNK_MS / 1000 * 2,  // start with 2 frames of buffer (~40ms)
+      lastArrival: 0,
+      arrivalJitter: 0,
+      packetsPlayed: 0,
+      silenceCount: 0
+    };
+  }
+
+  const player = peerPlayers[from];
+  const f32 = int16ToFloat32(new Int16Array(audioData));
+  // Create buffer at the SENDER's sample rate — this ensures correct pitch
+  // The AudioContext will automatically resample to its own output rate
+  const buf = ctx.createBuffer(1, f32.length, senderRate);
+  buf.copyToChannel(f32, 0);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(player.gainNode);
+
+  const now = ctx.currentTime;
+  const frameDur = buf.duration; // ~20ms
+
+  // ── Adaptive jitter estimation ──
+  if (player.lastArrival > 0) {
+    const interArrival = now - player.lastArrival;
+    const jitter = Math.abs(interArrival - frameDur);
+    // Exponential moving average of jitter
+    player.arrivalJitter = player.arrivalJitter * 0.95 + jitter * 0.05;
+    // Target buffer = 2× observed jitter, clamped between 20ms and 200ms
+    player.jitterBuffer = Math.min(0.2, Math.max(0.02, player.arrivalJitter * 2));
+  }
+  player.lastArrival = now;
+
+  // ── Schedule playback ──
+  // If this is the first packet, or we've fallen behind (gap/lag), reset timing
+  const tooFarBehind = player.nextTime < now - 0.05;         // buffer underrun: gap in audio
+  const tooFarAhead  = player.nextTime > now + 0.3;          // buffer overrun: latency building up
+  const firstPacket  = player.nextTime === 0;
+
+  if (firstPacket || tooFarBehind || tooFarAhead) {
+    // Reset: play after a small adaptive buffer delay
+    player.nextTime = now + player.jitterBuffer;
+    player.silenceCount = 0;
+  }
+
+  src.start(player.nextTime);
+  player.nextTime += frameDur;
+  player.packetsPlayed++;
+
+  showPeerSpeaking(from, true);
+  clearTimeout(player.silenceTimer);
+  player.silenceTimer = setTimeout(() => {
+    showPeerSpeaking(from, false);
+    // Reset nextTime on silence so next speech burst gets fresh timing
+    if (peerPlayers[from]) peerPlayers[from].nextTime = 0;
+  }, 300);
+});
+
+function showPeerSpeaking(sid, speaking) {
+  const card = document.getElementById(`card-${sid}`);
+  if (!card) return;
+  card.classList.toggle('speaking', speaking && !localMuted[sid]);
+  const tags = card.querySelector('.member-tags');
+  if (!tags) return;
+  const el = tags.querySelector('.tag-speaking');
+  if (speaking && !el && !localMuted[sid]) { const t=document.createElement('span'); t.className='tag tag-speaking'; t.textContent='Speaking'; tags.prepend(t); }
+  else if ((!speaking||localMuted[sid]) && el) el.remove();
+}
+
+function removePeerPlayer(sid) {
+  if (peerPlayers[sid]) {
+    try { peerPlayers[sid].gainNode.disconnect(); } catch(e){}
+    clearTimeout(peerPlayers[sid].silenceTimer);
+    delete peerPlayers[sid];
+  }
+}
+
+// ═══════════════════════════════════════
+//  MUTE / DEAFEN
+// ═══════════════════════════════════════
+function toggleMute() {
+  if (settings.pushToTalk || settings.pttTouch) return; // PTT controls mic
+  if (isDeafened) return;
+  isMuted = !isMuted;
+  socket.emit('set-self-muted', { muted: isMuted });
+  applyAudioState();
+}
+
+function toggleDeafen() {
+  isDeafened = !isDeafened;
+  isMuted    = isDeafened;
+  socket.emit('set-self-deafened', { deafened: isDeafened });
+  // Also update mute state since deafen affects it
+  socket.emit('set-self-muted', { muted: isMuted });
+  applyAudioState();
+}
+
+function applyAudioState() {
+  const anyPTT = settings.pushToTalk || settings.pttTouch;
+  if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = !isMuted && !anyPTT);
+  document.getElementById('icon-mute').textContent  = isMuted    ? '🔇' : '🎙️';
+  document.getElementById('label-mute').textContent = isMuted    ? (isDeafened ? 'Muted' : 'Unmute') : 'Mute';
+  document.getElementById('btn-mute').classList.toggle('active-red', isMuted && !anyPTT);
+  document.getElementById('icon-deaf').textContent  = isDeafened ? '🔕' : '🔊';
+  document.getElementById('label-deaf').textContent = isDeafened ? 'Undeafen' : 'Deafen';
+  document.getElementById('btn-deaf').classList.toggle('active-red', isDeafened);
+  const myCard = document.getElementById(`card-${socket.id}`);
+  if (myCard) rebuildTags(myCard, true);
+}
+
+function rebuildTags(card, isMe) {
+  const tagsEl = card.querySelector('.member-tags');
+  if (!tagsEl) return;
+  const sid      = card.id.replace('card-', '');
+  const isBc     = card.classList.contains('broadcaster-card');
+  const locMuted = !isMe && localMuted[sid];
+  const member   = (partyData[currentParty]||[]).find(m=>m.socketId===sid);
+  const srvMuted = !isMe && member?.serverMuted;
+  const isAdminCard = !isMe && member?.isAdmin;
+  const peerMuted = !isMe && member?.selfMuted;
+  const peerDeafened = !isMe && member?.selfDeafened;
+  tagsEl.innerHTML =
+    (isBc          ? '<span class="tag tag-broadcaster">Broadcaster</span>' : '') +
+    (isAdminCard   ? '<span class="tag tag-admin">Admin</span>'             : '') +
+    (isMe && isAdmin ? '<span class="tag tag-admin">Admin</span>'           : '') +
+    (isMe && amISpeaking && !isMuted && !settings.pushToTalk ? '<span class="tag tag-speaking">Speaking</span>' : '') +
+    (isMe && settings.pushToTalk ? '<span class="tag tag-ptt">PTT</span>'  : '') +
+    (isMe && isMuted && !isDeafened && !settings.pushToTalk ? '<span class="tag tag-muted">Muted</span>' : '') +
+    (isMe && isDeafened ? '<span class="tag tag-deafened">Deafened</span>' : '') +
+    (isMe && serverMutedMe ? '<span class="tag tag-server-muted">Server Muted</span>' : '') +
+    (peerDeafened ? '<span class="tag tag-deafened">Deafened</span>' : '') +
+    (peerMuted && !peerDeafened ? '<span class="tag tag-muted">Muted</span>' : '') +
+    (srvMuted ? '<span class="tag tag-server-muted">Server Muted</span>'   : '') +
+    (locMuted ? '<span class="tag tag-local-muted">Muted by you</span>'    : '');
+}
+
+// ═══════════════════════════════════════
+//  SERVER MUTE (received)
+// ═══════════════════════════════════════
+socket.on('server-muted', ({ muted, by }) => {
+  serverMutedMe = muted;
+  if (muted) {
+    if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
+    notify(`🔕 You have been server muted by ${by}`, 'warn');
+  } else {
+    if (localStream && !isMuted && !settings.pushToTalk && !settings.pttTouch) localStream.getAudioTracks().forEach(t => t.enabled = true);
+    notify(`🔊 Server mute removed by ${by}`, 'success');
+  }
+  updateMyCard();
+});
+
+socket.on('force-disconnect', ({ by }) => {
+  notify(`You were disconnected by admin ${by}`, 'error');
+  setTimeout(() => { window.location.reload(); }, 2000);
+});
+
+socket.on('admin-moved', ({ by, toPartyId }) => {
+  notify(`Admin ${by} moved you to Party ${toPartyId}`, 'warn');
+  Object.keys(peerPlayers).forEach(removePeerPlayer);
+  currentParty = toPartyId;
+  renderSidebar();
+  renderMainPanel();
+});
+
+// ═══════════════════════════════════════
+//  ADMIN
+// ═══════════════════════════════════════
+function onAdminClick() {
+  if (isAdmin) {
+    // Revoke
+    isAdmin = false;
+    socket.emit('revoke-admin');
+    document.getElementById('admin-toggle').classList.remove('active-yellow');
+    document.getElementById('broadcaster-toggle').style.display = 'none';
+    // Auto-stop broadcasting when admin is revoked
+    if (isBroadcaster) {
+      isBroadcaster = false;
+      document.getElementById('broadcaster-toggle').classList.remove('active-red');
+      socket.emit('set-broadcaster', { isBroadcaster: false });
+    }
+    notify('Admin powers revoked');
+  } else {
+    openAdminModal();
+  }
+}
+
+function openAdminModal() {
+  document.getElementById('admin-modal').classList.remove('hidden');
+  document.getElementById('admin-pass-input').value = '';
+  document.getElementById('admin-err').textContent  = '';
+  setTimeout(() => document.getElementById('admin-pass-input').focus(), 100);
+}
+
+function closeAdminModal() {
+  document.getElementById('admin-modal').classList.add('hidden');
+}
+
+document.getElementById('admin-pass-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAdminPassword();
+});
+
+function submitAdminPassword() {
+  const pw = document.getElementById('admin-pass-input').value;
+  socket.emit('claim-admin', { password: pw }, (res) => {
+    if (!res.ok) {
+      document.getElementById('admin-err').textContent = res.error || 'Wrong password';
+      return;
+    }
+    isAdmin = true;
+    closeAdminModal();
+    document.getElementById('admin-toggle').classList.add('active-yellow');
+    document.getElementById('broadcaster-toggle').style.display = '';
+    notify('⚡ Admin powers activated', 'success');
+    renderMainPanel();
+  });
+}
+
+function adminServerMute() {
+  if (!isAdmin || !popoverTarget) return;
+  const member = Object.values(partyData).flat().find(m => m.socketId === popoverTarget);
+  const currentlyMuted = member?.serverMuted || false;
+  socket.emit('admin-mute', { targetId: popoverTarget, muted: !currentlyMuted });
+  closePopover();
+}
+
+function adminKick() {
+  if (!isAdmin || !popoverTarget) return;
+  const member = Object.values(partyData).flat().find(m => m.socketId === popoverTarget);
+  if (!confirm(`Disconnect ${member?.username}?`)) return;
+  socket.emit('admin-disconnect', { targetId: popoverTarget });
+  closePopover();
+}
+
+// ═══════════════════════════════════════
+//  BROADCASTER
+// ═══════════════════════════════════════
+let bcTargets     = 'all';   // 'all' | number[]
+let bcPaused      = false;
+let bcAllSelected = true;
+let bcPartySelected = new Set(); // selected party IDs when not 'all'
+
+function toggleBroadcaster() {
+  if (isBroadcaster) {
+    // Already live — clicking stops it
+    stopBroadcast();
+  } else {
+    // Open the target picker modal
+    openBroadcastModal();
+  }
+}
+
+function openBroadcastModal() {
+  // Build party buttons with live member counts
+  const grid = document.getElementById('bc-party-grid');
+  // Remove old party buttons (keep the All button which is first child)
+  const allBtn = document.getElementById('bc-all-btn');
+  grid.innerHTML = '';
+  grid.appendChild(allBtn);
+
+  for (let i = 1; i <= 12; i++) {
+    const count = (partyData[i] || []).length;
+    const btn = document.createElement('button');
+    btn.className = 'bc-party-btn' + (bcPartySelected.has(i) && !bcAllSelected ? ' selected' : '');
+    btn.id = `bc-party-${i}`;
+    btn.innerHTML = `Party ${i}<span class="bc-party-count">${count} member${count !== 1 ? 's' : ''}</span>`;
+    btn.onclick = () => bcToggleParty(i);
+    grid.appendChild(btn);
+  }
+  // Reset to 'all' each time modal opens fresh (unless there's an active selection)
+  if (!isBroadcaster) {
+    bcAllSelected = true;
+    bcPartySelected.clear();
+    document.getElementById('bc-all-btn').classList.add('selected');
+  }
+  updateBcSelectedLabel();
+  document.getElementById('broadcast-modal').classList.remove('hidden');
+}
+
+function closeBroadcastModal() {
+  document.getElementById('broadcast-modal').classList.add('hidden');
+}
+
+function bcToggleAll() {
+  bcAllSelected = true;
+  bcPartySelected.clear();
+  document.getElementById('bc-all-btn').classList.add('selected');
+  document.querySelectorAll('.bc-party-btn').forEach(b => b.classList.remove('selected'));
+  updateBcSelectedLabel();
+}
+
+function bcToggleParty(id) {
+  // Deselect "All" when picking specific parties
+  bcAllSelected = false;
+  document.getElementById('bc-all-btn').classList.remove('selected');
+  if (bcPartySelected.has(id)) {
+    bcPartySelected.delete(id);
+  } else {
+    bcPartySelected.add(id);
+  }
+  const btn = document.getElementById(`bc-party-${id}`);
+  if (btn) btn.classList.toggle('selected', bcPartySelected.has(id));
+  // If nothing selected, fall back to all
+  if (bcPartySelected.size === 0) bcToggleAll();
+  updateBcSelectedLabel();
+}
+
+function updateBcSelectedLabel() {
+  const label = document.getElementById('bc-selected-label');
+  if (!label) return;
+  if (bcAllSelected) {
+    label.textContent = 'Broadcasting to all parties';
+  } else {
+    const sorted = [...bcPartySelected].sort((a,b) => a-b);
+    label.textContent = `Broadcasting to: Party ${sorted.join(', Party ')}`;
+  }
+}
+
+function startBroadcast() {
+  bcTargets = bcAllSelected ? 'all' : [...bcPartySelected];
+  bcPaused  = false;
+  isBroadcaster = true;
+
+  closeBroadcastModal();
+  document.getElementById('broadcaster-toggle').classList.remove('active-paused');
+  document.getElementById('broadcaster-toggle').classList.add('active-red');
+  socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: false });
+
+  const label = bcTargets === 'all' ? 'all parties' : `Party ${[...bcPartySelected].sort((a,b)=>a-b).join(', ')}`;
+  notify(`🔴 Broadcasting to ${label}`, 'success');
+  updateBcPauseBtn();
+}
+
+function stopBroadcast() {
+  isBroadcaster = false;
+  bcPaused = false;
+  document.getElementById('broadcaster-toggle').classList.remove('active-red', 'active-paused');
+  socket.emit('set-broadcaster', { isBroadcaster: false });
+  notify('Broadcasting stopped');
+  updateBcPauseBtn();
+}
+
+function onBroadcastPauseToggle() {
+  if (!isBroadcaster) return;
+  bcPaused = !bcPaused;
+  socket.emit('set-broadcast-paused', { paused: bcPaused });
+  const pill = document.getElementById('broadcaster-toggle');
+  if (bcPaused) {
+    pill.classList.remove('active-red'); pill.classList.add('active-paused');
+    notify('⏸ Broadcast paused', 'warn');
+  } else {
+    pill.classList.remove('active-paused'); pill.classList.add('active-red');
+    notify('▶ Broadcast resumed', 'success');
+  }
+  updateBcPauseBtn();
+}
+
+function updateBcPauseBtn() {
+  const btn   = document.getElementById('btn-bc-pause');
+  const icon  = document.getElementById('icon-bc-pause');
+  const label = document.getElementById('label-bc-pause');
+  if (!btn) return;
+  if (isBroadcaster) {
+    btn.style.display = 'flex';
+    if (bcPaused) {
+      btn.classList.add('bc-paused');
+      if (icon)  icon.textContent  = '▶️';
+      if (label) label.textContent = 'Resume BC';
+    } else {
+      btn.classList.remove('bc-paused');
+      if (icon)  icon.textContent  = '⏸️';
+      if (label) label.textContent = 'Pause BC';
+    }
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════
+//  POPOVER (per-user controls)
+// ═══════════════════════════════════════
+function openPopover(sid, event) {
+  event.stopPropagation();
+  const member = Object.values(partyData).flat().find(m => m.socketId === sid);
+  if (!member) return;
+  popoverTarget = sid;
+
+  document.getElementById('pop-avatar').textContent = member.username[0].toUpperCase();
+  document.getElementById('pop-name').textContent   = member.username;
+
+  const vol = localVolume[sid] ?? 100;
+  document.getElementById('pop-vol-slider').value      = vol;
+  document.getElementById('pop-vol-value').textContent = vol + '%';
+
+  const muted = localMuted[sid] || false;
+  document.getElementById('pop-mute-icon').textContent  = muted ? '🔊' : '🔇';
+  document.getElementById('pop-mute-label').textContent = muted ? 'Unmute for me' : 'Mute for me';
+  document.getElementById('pop-mute-btn').classList.toggle('is-active', muted);
+
+  // Admin controls visibility
+  const showAdmin = isAdmin;
+  document.getElementById('pop-admin-divider').style.display  = showAdmin ? '' : 'none';
+  document.getElementById('pop-servermute-btn').style.display = showAdmin ? '' : 'none';
+  document.getElementById('pop-kick-btn').style.display       = showAdmin ? '' : 'none';
+
+  if (showAdmin) {
+    const srvMuted = member.serverMuted || false;
+    document.getElementById('pop-sm-icon').textContent  = srvMuted ? '🔊' : '🔕';
+    document.getElementById('pop-sm-label').textContent = srvMuted ? 'Unmute (server)' : 'Server mute';
+    document.getElementById('pop-servermute-btn').classList.toggle('is-active', srvMuted);
+  }
+
+  const pop  = document.getElementById('popover');
+  const card = document.getElementById(`card-${sid}`);
+  const rect = card.getBoundingClientRect();
+  pop.style.display = 'block';
+  document.getElementById('popover-overlay').classList.add('open');
+
+  const pw = 230, ph = showAdmin ? 240 : 160;
+  let top  = rect.bottom + 8;
+  let left = rect.left;
+  if (top  + ph > window.innerHeight - 20) top  = rect.top - ph - 8;
+  if (left + pw > window.innerWidth  - 16) left = window.innerWidth - pw - 16;
+  if (top < 70) top = 70; if (left < 8) left = 8;
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
+}
+
+function closePopover() {
+  document.getElementById('popover').style.display = 'none';
+  document.getElementById('popover-overlay').classList.remove('open');
+  popoverTarget = null;
+}
+
+function onVolSlider(val) {
+  if (!popoverTarget) return;
+  const v = parseInt(val);
+  localVolume[popoverTarget] = v;
+  document.getElementById('pop-vol-value').textContent = v + '%';
+  if (peerPlayers[popoverTarget]) peerPlayers[popoverTarget].gainNode.gain.value = v / 100;
+  const card = document.getElementById(`card-${popoverTarget}`);
+  if (card) {
+    const av = card.querySelector('.member-avatar');
+    if (v !== 100) { av.setAttribute('data-vol', v+'%'); av.classList.add('vol-custom'); }
+    else           { av.removeAttribute('data-vol'); av.classList.remove('vol-custom'); }
+  }
+}
+
+function toggleLocalMute() {
+  if (!popoverTarget) return;
+  localMuted[popoverTarget] = !localMuted[popoverTarget];
+  const muted = localMuted[popoverTarget];
+  document.getElementById('pop-mute-icon').textContent  = muted ? '🔊' : '🔇';
+  document.getElementById('pop-mute-label').textContent = muted ? 'Unmute for me' : 'Mute for me';
+  document.getElementById('pop-mute-btn').classList.toggle('is-active', muted);
+  const card = document.getElementById(`card-${popoverTarget}`);
+  if (card) {
+    card.classList.toggle('user-muted-local', muted);
+    rebuildTags(card, false);
+    if (muted) showPeerSpeaking(popoverTarget, false);
+  }
+}
+
+// ═══════════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════════
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+// ═══════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════
+function renderSidebar() {
+  const list = document.getElementById('party-list');
+  list.innerHTML = '';
+  for (let i = 1; i <= 12; i++) {
+    const members = partyData[i] || [];
+    const count   = members.length;
+    const active  = currentParty === i;
+
+    // Channel row
+    const div = document.createElement('div');
+    div.className = 'channel-item' + (active ? ' active' : '') + (count > 0 ? ' has-members' : '');
+    div.onclick = () => { joinParty(i); closeSidebar(); };
+    div.innerHTML = `<span class="ch-icon">${active?'🔊':'🔈'}</span><span class="ch-label">Party ${i}</span><span class="ch-count">${count||''}</span>`;
+    
+    // Make channel a drop target for admins
+    if (isAdmin) {
+      div.ondragover = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        div.classList.add('drag-over');
+      };
+      div.ondragleave = (e) => {
+        div.classList.remove('drag-over');
+      };
+      div.ondrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        div.classList.remove('drag-over');
+        const targetId = e.dataTransfer.getData('text/plain');
+        if (targetId && targetId !== socket.id) {
+          socket.emit('admin-move', { targetId, toPartyId: i });
+        }
+      };
+    }
+    
+    list.appendChild(div);
+
+    // Member list under channel (always shown if has members)
+    if (count > 0) {
+      const memberList = document.createElement('div');
+      memberList.className = 'ch-members';
+      memberList.style.display = 'block';
+      members.forEach(m => {
+        const isMe = m.socketId === socket.id;
+        const row  = document.createElement('div');
+        row.className = 'ch-member-row';
+        
+        // Make draggable for admins (except for yourself)
+        if (isAdmin && !isMe) {
+          row.draggable = true;
+          row.ondragstart = (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', m.socketId);
+            row.classList.add('dragging');
+          };
+          row.ondragend = (e) => {
+            row.classList.remove('dragging');
+          };
+        }
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'ch-member-name' + (isMe ? ' is-you' : '') + (m.serverMuted ? ' is-muted' : '') + (m.selfMuted ? ' self-muted' : '') + (m.selfDeafened ? ' self-deafened' : '');
+        const muteIcon = m.selfDeafened ? '🔕' : m.selfMuted ? '🔇' : '';
+        nameSpan.textContent = (isMe ? '▶ ' : '') + muteIcon + (muteIcon ? ' ' : '') + m.username;
+        row.appendChild(nameSpan);
+
+        // Tags (hidden on hover in favour of admin buttons)
+        const tags = document.createElement('div');
+        tags.className = 'ch-member-tags';
+        if (m.isAdmin)      tags.innerHTML += '<span class="ch-tag ch-tag-admin">ADM</span>';
+        if (m.serverMuted)  tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTED</span>';
+        if (m.selfDeafened) tags.innerHTML += '<span class="ch-tag ch-tag-deafened">DEAF</span>';
+        else if (m.selfMuted) tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTE</span>';
+        row.appendChild(tags);
+
+        // Admin buttons (shown on hover, only if isAdmin)
+        if (isAdmin && !isMe) {
+          const adminBtns = document.createElement('div');
+          adminBtns.className = 'ch-admin-btns';
+          const muteLabel = m.serverMuted ? 'Unmute' : 'Mute';
+          adminBtns.innerHTML =
+            `<button class="ch-admin-btn mute-btn" onclick="sidebarAdminMute('${m.socketId}',${m.serverMuted},event)">${muteLabel}</button>` +
+            `<button class="ch-admin-btn" onclick="sidebarAdminKick('${m.socketId}','${m.username.replace(/'/g,'')}',event)">Kick</button>`;
+          row.appendChild(adminBtns);
+        }
+
+        memberList.appendChild(row);
+      });
+      list.appendChild(memberList);
+    }
+  }
+  if (currentParty) {
+    const lb = document.createElement('button');
+    lb.className = 'leave-btn'; lb.innerHTML = '✕ &nbsp;Leave channel';
+    lb.onclick = () => { leaveParty(); closeSidebar(); };
+    list.appendChild(lb);
+  }
+}
+
+function sidebarAdminMute(targetId, currentlyMuted, event) {
+  event.stopPropagation();
+  if (!isAdmin) return;
+  socket.emit('admin-mute', { targetId, muted: !currentlyMuted });
+}
+
+function sidebarAdminKick(targetId, username, event) {
+  event.stopPropagation();
+  if (!isAdmin) return;
+  if (!confirm('Disconnect ' + username + '?')) return;
+  socket.emit('admin-disconnect', { targetId });
+}
+
+function renderMainPanel() {
+  const empty = document.getElementById('empty-state');
+  const view  = document.getElementById('party-view');
+  // Leave button — visible only when in a party
+  const leaveBtn = document.getElementById('btn-leave');
+  if (leaveBtn) leaveBtn.style.display = currentParty ? 'flex' : 'none';
+  // Pause broadcast button — visible only when actively broadcasting
+  updateBcPauseBtn();
+  if (!currentParty) { empty.style.display='flex'; view.style.display='none'; return; }
+  empty.style.display='none'; view.style.display='block';
+
+  const members = partyData[currentParty] || [];
+  const broadcasters = [];
+  for (let i = 1; i <= 12; i++) {
+    (partyData[i]||[]).forEach(m => {
+      if (m.isBroadcaster && m.socketId !== socket.id && !broadcasters.find(b=>b.socketId===m.socketId))
+        broadcasters.push(m);
+    });
+  }
+
+  let html = `<div class="party-header">
+    <div class="party-header-icon">🎙️</div>
+    <div>
+      <div class="party-title">Party ${currentParty}</div>
+      <div class="party-sub">${members.length} member${members.length!==1?'s':''} · Click a user to adjust volume${isAdmin?' · Admin mode active':''}</div>
+    </div>
+  </div>`;
+
+  if (broadcasters.length > 0) {
+    const bcInfo = broadcasters.map(b => {
+      const targets = b.broadcastTargets;
+      const targetText = targets === 'all' ? 'all parties' : `Party ${Array.isArray(targets) ? targets.sort((a,b)=>a-b).join(', ') : targets}`;
+      return `${b.username} → ${targetText}`;
+    }).join(' | ');
+    html += `<div class="broadcast-banner"><div class="bc-banner-dot" style="${broadcasters.some(b=>b.broadcastPaused)?'animation:none;opacity:0.4':''}"></div><div class="bc-banner-text">${broadcasters.some(b=>b.broadcastPaused)?'⏸ PAUSED —':'LIVE BROADCAST —'} ${bcInfo}</div></div>`;
+  }
+
+  const allCards = [...members];
+  broadcasters.forEach(b => { if (!allCards.find(m=>m.socketId===b.socketId)) allCards.push(b); });
+
+  html += `<div class="members-grid">`;
+  if (members.find(m=>m.socketId===socket.id) || isBroadcaster)
+    html += memberCardHTML({ socketId: socket.id, username: myUsername, isBroadcaster, isAdmin, serverMuted: serverMutedMe }, true);
+  allCards.forEach(m => { if (m.socketId !== socket.id) html += memberCardHTML(m, false); });
+  html += `</div>`;
+  view.innerHTML = html;
+}
+
+function memberCardHTML(m, isMe) {
+  const speaking   = isMe ? (amISpeaking && !isMuted && !settings.pushToTalk) : false;
+  const muted      = isMe && isMuted && !isDeafened && !settings.pushToTalk;
+  const deafened   = isMe && isDeafened;
+  const peerMuted  = !isMe && m.selfMuted && !m.selfDeafened;
+  const peerDeafened = !isMe && m.selfDeafened;
+  const locMuted   = !isMe && localMuted[m.socketId];
+  const vol        = localVolume[m.socketId] ?? 100;
+  const volCustom  = !isMe && vol !== 100;
+  const srvMuted   = m.serverMuted || false;
+
+  return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
+    id="card-${m.socketId}"
+    ${!isMe?`onclick="openPopover('${m.socketId}',event)"`:''}>
+    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${m.username[0].toUpperCase()}</div>
+    <div class="member-name">${m.username}</div>
+    ${isMe?'<div class="member-you">· you</div>':''}
+    <div class="member-tags">
+      ${m.isBroadcaster?'<span class="tag tag-broadcaster">Broadcaster</span>':''}
+      ${(isMe?isAdmin:m.isAdmin)?'<span class="tag tag-admin">Admin</span>':''}
+      ${speaking?'<span class="tag tag-speaking">Speaking</span>':''}
+      ${isMe&&settings.pushToTalk?'<span class="tag tag-ptt">PTT</span>':''}
+      ${muted?'<span class="tag tag-muted">Muted</span>':''}
+      ${deafened?'<span class="tag tag-deafened">Deafened</span>':''}
+      ${peerDeafened?'<span class="tag tag-deafened">Deafened</span>':''}
+      ${peerMuted?'<span class="tag tag-muted">Muted</span>':''}
+      ${isMe&&serverMutedMe?'<span class="tag tag-server-muted">Server Muted</span>':''}
+      ${!isMe&&srvMuted?'<span class="tag tag-server-muted">Server Muted</span>':''}
+      ${locMuted?'<span class="tag tag-local-muted">Muted by you</span>':''}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+//  PARTY JOIN/LEAVE
+// ═══════════════════════════════════════
+function joinParty(partyId) {
+  if (currentParty === partyId) return;
+  Object.keys(peerPlayers).forEach(removePeerPlayer);
+  currentParty = partyId;
+  socket.emit('join-party', { partyId });
+  playSound('join');
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function leaveParty() {
+  if (!currentParty) return;
+  Object.keys(peerPlayers).forEach(removePeerPlayer);
+  socket.emit('leave-party');
+  playSound('leave');
+  currentParty = null;
+  renderSidebar(); renderMainPanel();
+}
+
+// ═══════════════════════════════════════
+//  SOCKET EVENTS
+// ═══════════════════════════════════════
+socket.on('connect', () => {
+  document.getElementById('status-dot').className   = 'status-dot connected';
+  document.getElementById('status-text').textContent = 'Connected';
+  // Re-join after reconnection if we were previously logged in
+  if (myUsername) {
+    socket.emit('join', { username: myUsername });
+    if (currentParty) {
+      socket.emit('join-party', { partyId: currentParty });
+    }
+    if (isBroadcaster) {
+      socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
+    }
+    if (isAdmin) {
+      // Admin needs to re-authenticate — just flag it visually
+      isAdmin = false;
+      document.getElementById('admin-toggle').classList.remove('active-yellow');
+      document.getElementById('broadcaster-toggle').style.display = 'none';
+      notify('Reconnected — re-enter admin password if needed', 'warn');
+    }
+    if (isMuted) socket.emit('set-self-muted', { muted: true });
+    if (isDeafened) socket.emit('set-self-deafened', { deafened: true });
+  }
+});
+socket.on('disconnect', () => {
+  document.getElementById('status-dot').className   = 'status-dot disconnected';
+  document.getElementById('status-text').textContent = 'Disconnected…';
+});
+
+socket.on('init', ({ partyList }) => {
+  partyData = {};
+  Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
+  renderSidebar();
+});
+
+socket.on('party-update', (partyList) => {
+  partyData = {};
+  Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
+  renderSidebar();
+  if (currentParty) renderMainPanel();
+});
+
+socket.on('party-peers',      () => renderMainPanel());
+socket.on('peer-joined',      () => { playSound('join'); renderMainPanel(); });
+socket.on('peer-left', ({ socketId }) => { removePeerPlayer(socketId); playSound('leave'); renderMainPanel(); });
+socket.on('broadcaster-left', () => renderMainPanel());
+socket.on('broadcaster-paused', ({ socketId, paused }) => renderMainPanel());
+socket.on('broadcaster-joined', ({ socketId, username }) => {
+  if (socketId === socket.id) return;
+  notify(`📡 ${username} is now broadcasting`);
+  renderMainPanel();
+});
+
+// ═══════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════
+function notify(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = `notif${type?' '+type:''}`;
+  el.textContent = msg;
+  document.getElementById('notifications').appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+
+
+// ═══════════════════════════════════════
+//  SOUND ENGINE
+// ═══════════════════════════════════════
+let sfxCtx = null;
+
+function getSfxCtx() {
+  if (!sfxCtx || sfxCtx.state === 'closed') {
+    sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (sfxCtx.state === 'suspended') sfxCtx.resume();
+  return sfxCtx;
+}
+
+function playSound(type) {
+  try {
+    const ctx = getSfxCtx();
+    const now = ctx.currentTime;
+
+    if (type === 'join') {
+      // Two-tone ascending chime — clean, modern
+      [[660, 0, 0.08], [880, 0.1, 0.08]].forEach(([freq, delay, dur]) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + delay);
+        gain.gain.linearRampToValueAtTime(0.18, now + delay + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + dur + 0.15);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(now + delay); osc.stop(now + delay + dur + 0.18);
+      });
+
+    } else if (type === 'leave') {
+      // Single low descending tone — hollow, distinct from join
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.2);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.35);
+
+    } else if (type === 'ptt-on') {
+      // Short click-on — single high tick
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.04);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.07);
+
+    } else if (type === 'ptt-off') {
+      // Short click-off — lower tick
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.04);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.07);
+    }
+  } catch(e) { /* audio unavailable */ }
+}
+
+// ═══════════════════════════════════════
+//  LOGOUT
+// ═══════════════════════════════════════
+function logout() {
+  if (!confirm('Sign out of OathlyVoice?')) return;
+  // Leave party gracefully
+  if (currentParty) socket.emit('leave-party');
+  // Stop broadcasting
+  if (isBroadcaster) { isBroadcaster = false; socket.emit('set-broadcaster', { isBroadcaster: false }); }
+  // Stop VAD
+  if (micVAD) { try { micVAD.destroy(); } catch(e){} micVAD = null; }
+  // Stop mic
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  // Close audio contexts
+  if (audioCtx) { try { audioCtx.close(); } catch(e){} }
+  if (playbackCtx) { try { playbackCtx.close(); } catch(e){} }
+  Object.keys(peerPlayers).forEach(removePeerPlayer);
+  // Disconnect socket
+  socket.disconnect();
+  // Reload page to return to login
+  window.location.reload();
+}
+
+// iOS unlock
+document.addEventListener('touchstart', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
+}, { passive: true });
+</script>
+</body>
+</html>

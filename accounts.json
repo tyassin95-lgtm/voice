@@ -1,0 +1,293 @@
+{
+  "qursa": {
+    "username": "Qursa",
+    "password": "T6203039",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Backquote",
+      "inputVolume": 100,
+      "pttTouch": false
+    }
+  },
+  "sylvaa": {
+    "username": "Sylvaa",
+    "password": "1mimi123",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100,
+      "pttTouch": false
+    }
+  },
+  "ace": {
+    "username": "Ace",
+    "password": "F.torres-95",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "jimmydarkて": {
+    "username": "JimmyDarkて",
+    "password": "testing69",
+    "settings": {
+      "micSensitivity": 1,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "vivv": {
+    "username": "Vivv",
+    "password": "Mastercard1!",
+    "settings": {
+      "micSensitivity": 20,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "AltLeft",
+      "inputVolume": 116
+    }
+  },
+  "qubed": {
+    "username": "Qubed",
+    "password": "crims0nleaf",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "madefli": {
+    "username": "MadeFli",
+    "password": "Love1710",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "jouixs": {
+    "username": "Jouixs",
+    "password": "oath",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "singl": {
+    "username": "SingL",
+    "password": "Ghosty123",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "notdevil": {
+    "username": "notdevil",
+    "password": "vaFpig-cywguf-vikfe5",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "swagmasterh": {
+    "username": "SwagmasterH",
+    "password": "22091993",
+    "settings": {
+      "micSensitivity": 1,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 50
+    }
+  },
+  "kaned0": {
+    "username": "Kaned0",
+    "password": "nairolf95",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "zoll": {
+    "username": "Zoll",
+    "password": "Eve2007rtjgdhbp$",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "astartha": {
+    "username": "Astartha",
+    "password": "K!k!mor\"97",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "luuseri": {
+    "username": "luuseri",
+    "password": "Gay123",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": false,
+      "echoCancellation": false,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "neptunia": {
+    "username": "NeptuNia",
+    "password": "@.JR-discord0",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "rosepapillon": {
+    "username": "rosepapillon",
+    "password": "jimmp",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "jokeritto": {
+    "username": "Jokeritto",
+    "password": "Romain777",
+    "settings": {
+      "micSensitivity": 19,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 130,
+      "pttTouch": false
+    }
+  },
+  "gaaiaa": {
+    "username": "Gaaiaa",
+    "password": "Moniejolie12)))!",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "xerotonin": {
+    "username": "Xerotonin",
+    "password": "Oath143.",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "grognfor": {
+    "username": "Grognfor",
+    "password": "P3QG??z!tF7S",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "nightswordx": {
+    "username": "NightSwordX",
+    "password": "Warper082786!",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "kalzboo": {
+    "username": "Kalzboo",
+    "password": "12233344445",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "kalzbooo": {
+    "username": "Kalzbooo",
+    "password": "12233344445",
+    "settings": {
+      "micSensitivity": 15,
+      "noiseSuppression": true,
+      "echoCancellation": true,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "inputVolume": 100
+    }
+  }
+}
