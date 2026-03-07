@@ -924,14 +924,17 @@ async function populateDeviceList() {
     inputSelect.innerHTML  = '<option value="">System Default</option>';
     outputSelect.innerHTML = '<option value="">System Default</option>';
 
+    let inputCount = 0, outputCount = 0;
     devices.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.deviceId;
       if (d.kind === 'audioinput') {
-        opt.textContent = d.label || ('Microphone ' + (inputSelect.options.length));
+        inputCount++;
+        opt.textContent = d.label || ('Microphone ' + inputCount);
         inputSelect.appendChild(opt);
       } else if (d.kind === 'audiooutput') {
-        opt.textContent = d.label || ('Speaker ' + (outputSelect.options.length));
+        outputCount++;
+        opt.textContent = d.label || ('Speaker ' + outputCount);
         outputSelect.appendChild(opt);
       }
     });
@@ -990,7 +993,7 @@ async function switchMicrophone(deviceId) {
     if (localStream) localStream.getTracks().forEach(t => t.stop());
 
     // Tear down old source node only (keep audioCtx and processor intact)
-    if (sourceNode) { try { sourceNode.disconnect(); } catch(e){} sourceNode = null; }
+    if (sourceNode) { try { sourceNode.disconnect(); } catch(e){ console.warn('[Devices] sourceNode disconnect:', e); } sourceNode = null; }
 
     localStream = newStream;
 
@@ -1004,7 +1007,7 @@ async function switchMicrophone(deviceId) {
     if (wasMuted) localStream.getAudioTracks().forEach(t => t.enabled = false);
 
     // Re-init VAD with new stream
-    if (micVAD) { try { micVAD.destroy(); } catch(e){} micVAD = null; }
+    if (micVAD) { try { micVAD.destroy(); } catch(e){ console.warn('[Devices] VAD cleanup:', e); } micVAD = null; }
     initVAD();
 
     notify('Microphone switched ✓', 'success');
