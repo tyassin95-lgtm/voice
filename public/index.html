@@ -79,6 +79,9 @@
   .ptt-key-btn{background:var(--nav-bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:6px 14px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;min-width:80px;text-align:center}
   .ptt-key-btn.listening{border-color:var(--accent);color:var(--accent);animation:pulse 1s infinite}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--accent-glow)}50%{box-shadow:0 0 0 6px transparent}}
+  .device-select{width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;cursor:pointer;transition:box-shadow 0.2s;-webkit-appearance:none;appearance:none;height:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b5bac1' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+  .device-select:focus{box-shadow:0 0 0 2px var(--accent)}
+  .device-select option{background:var(--nav-bg);color:var(--text)}
 
   /* ═══ LOGIN ═══ */
   #login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;background:var(--accent);padding:24px}
@@ -448,6 +451,22 @@
     <div class="modal-sub" id="settings-sub">Adjustments are applied live</div>
 
     <div class="settings-section">
+      <div class="settings-section-title">Audio Devices</div>
+      <div class="field" style="margin-bottom:14px">
+        <label>Input Device</label>
+        <select class="device-select" id="input-device-select" onchange="onInputDeviceChange()">
+          <option value="">System Default</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Output Device</label>
+        <select class="device-select" id="output-device-select" onchange="onOutputDeviceChange()">
+          <option value="">System Default</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="settings-section">
       <div class="settings-section-title">Microphone</div>
 
       <div class="slider-row">
@@ -695,6 +714,8 @@ let pttListening        = false;
 let muteKeyListening    = false;
 let bcPauseKeyListening = false;
 let inputGainNode       = null;
+let selectedInputDeviceId  = localStorage.getItem('voice_input_device_id') || '';
+let selectedOutputDeviceId = localStorage.getItem('voice_output_device_id') || '';
 
 let audioCtx      = null;
 let sourceNode    = null;
@@ -834,6 +855,7 @@ function applySettingsUI() {
 
 function openSettings() {
   document.getElementById('settings-modal').classList.remove('hidden');
+  populateDeviceList();
 }
 function closeSettings() {
   document.getElementById('settings-modal').classList.add('hidden');
@@ -887,6 +909,133 @@ function onNoiseCancelToggle() {
   settings.noiseCancelation = document.getElementById('toggle-noise-cancel').checked;
   localStorage.setItem('voice_noise_cancelation_enabled', settings.noiseCancelation);
 }
+
+/* ═══ AUDIO DEVICE SELECTION ═══ */
+async function populateDeviceList() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputSelect  = document.getElementById('input-device-select');
+    const outputSelect = document.getElementById('output-device-select');
+    if (!inputSelect || !outputSelect) return;
+
+    const prevInput  = inputSelect.value;
+    const prevOutput = outputSelect.value;
+
+    inputSelect.innerHTML  = '<option value="">System Default</option>';
+    outputSelect.innerHTML = '<option value="">System Default</option>';
+
+    devices.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      if (d.kind === 'audioinput') {
+        opt.textContent = d.label || ('Microphone ' + (inputSelect.options.length));
+        inputSelect.appendChild(opt);
+      } else if (d.kind === 'audiooutput') {
+        opt.textContent = d.label || ('Speaker ' + (outputSelect.options.length));
+        outputSelect.appendChild(opt);
+      }
+    });
+
+    // Restore selection — fall back to default if saved device is gone
+    if (selectedInputDeviceId && [...inputSelect.options].some(o => o.value === selectedInputDeviceId)) {
+      inputSelect.value = selectedInputDeviceId;
+    } else {
+      inputSelect.value = prevInput || '';
+    }
+    if (selectedOutputDeviceId && [...outputSelect.options].some(o => o.value === selectedOutputDeviceId)) {
+      outputSelect.value = selectedOutputDeviceId;
+    } else {
+      outputSelect.value = prevOutput || '';
+    }
+  } catch (e) {
+    console.warn('[Devices] Could not enumerate devices:', e);
+  }
+}
+
+async function onInputDeviceChange() {
+  const sel = document.getElementById('input-device-select');
+  selectedInputDeviceId = sel.value;
+  localStorage.setItem('voice_input_device_id', selectedInputDeviceId);
+  if (localStream) await switchMicrophone(selectedInputDeviceId);
+}
+
+async function onOutputDeviceChange() {
+  const sel = document.getElementById('output-device-select');
+  selectedOutputDeviceId = sel.value;
+  localStorage.setItem('voice_output_device_id', selectedOutputDeviceId);
+  await applyOutputDevice();
+}
+
+async function switchMicrophone(deviceId) {
+  try {
+    // Build constraints
+    const audioConstraints = { noiseSuppression: true, echoCancellation: true, autoGainControl: true };
+    if (deviceId) audioConstraints.deviceId = { exact: deviceId };
+
+    let newStream;
+    try {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        audio: { ...audioConstraints, channelCount: 1, sampleRate: 48000, latency: 0.01 },
+        video: false
+      });
+    } catch (constraintErr) {
+      console.warn('[Devices] Advanced constraints not supported, retrying:', constraintErr);
+      newStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+    }
+
+    // Preserve mute / PTT state
+    const wasMuted = isMuted || settings.pushToTalk || settings.pttTouch;
+
+    // Stop old tracks
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+
+    // Tear down old source node only (keep audioCtx and processor intact)
+    if (sourceNode) { try { sourceNode.disconnect(); } catch(e){} sourceNode = null; }
+
+    localStream = newStream;
+
+    // Reconnect into existing pipeline
+    if (audioCtx && inputGainNode) {
+      sourceNode = audioCtx.createMediaStreamSource(localStream);
+      sourceNode.connect(inputGainNode);
+    }
+
+    // Restore track enabled state
+    if (wasMuted) localStream.getAudioTracks().forEach(t => t.enabled = false);
+
+    // Re-init VAD with new stream
+    if (micVAD) { try { micVAD.destroy(); } catch(e){} micVAD = null; }
+    initVAD();
+
+    notify('Microphone switched ✓', 'success');
+  } catch (e) {
+    console.error('[Devices] Failed to switch microphone:', e);
+    notify('Could not switch microphone', 'error');
+  }
+}
+
+async function applyOutputDevice() {
+  const deviceId = selectedOutputDeviceId || '';
+  try {
+    // AudioContext.setSinkId is available in modern browsers
+    if (playbackCtx && typeof playbackCtx.setSinkId === 'function') {
+      await playbackCtx.setSinkId(deviceId);
+    }
+    if (sfxCtx && typeof sfxCtx.setSinkId === 'function') {
+      await sfxCtx.setSinkId(deviceId);
+    }
+  } catch (e) {
+    console.warn('[Devices] Could not set output device:', e);
+  }
+}
+
+// Listen for device changes (hot-swap)
+if (navigator.mediaDevices) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    populateDeviceList();
+  });
+}
+/* ═══ END AUDIO DEVICE SELECTION ═══ */
 
 function onPttTouchToggle() {
   settings.pttTouch = document.getElementById('toggle-ptt-touch').checked;
@@ -1060,12 +1209,16 @@ function initPTTTouchButton() {
 
 async function initAudio() {
   try {
+    const audioConstraints = {
+      noiseSuppression: true,
+      echoCancellation: true,
+      autoGainControl:  true
+    };
+    if (selectedInputDeviceId) audioConstraints.deviceId = { exact: selectedInputDeviceId };
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          noiseSuppression: true,
-          echoCancellation: true,
-          autoGainControl:  true,
+          ...audioConstraints,
           channelCount:     1,
           sampleRate:       48000,
           latency:          0.01
@@ -1076,11 +1229,7 @@ async function initAudio() {
       // Fallback for mobile browsers that may not support all constraints
       console.warn('Audio constraints (channelCount/sampleRate/latency) not supported, retrying without them:', constraintErr);
       localStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          noiseSuppression: true,
-          echoCancellation: true,
-          autoGainControl:  true
-        },
+        audio: audioConstraints,
         video: false
       });
     }
@@ -1089,6 +1238,10 @@ async function initAudio() {
     notify('Microphone ready', 'success');
     // initVAD requires localStream — call it only after getUserMedia resolves
     initVAD();
+    // Populate device list after permission is granted (labels become available)
+    populateDeviceList();
+    // Apply saved output device
+    applyOutputDevice();
   } catch(e) {
     notify('Microphone access denied', 'error');
   }
@@ -1392,10 +1545,9 @@ let playbackCtx = null;
 
 function getPlaybackCtx() {
   if (!playbackCtx || playbackCtx.state === 'closed') {
-    playbackCtx = new (window.AudioContext || window.webkitAudioContext)({
-      sampleRate:  DISCORD_SAMPLE_RATE,
-      latencyHint: 'interactive'
-    });
+    const opts = { sampleRate: DISCORD_SAMPLE_RATE, latencyHint: 'interactive' };
+    if (selectedOutputDeviceId) opts.sinkId = selectedOutputDeviceId;
+    playbackCtx = new (window.AudioContext || window.webkitAudioContext)(opts);
   }
   if (playbackCtx.state === 'suspended') playbackCtx.resume();
   return playbackCtx;
@@ -2248,7 +2400,8 @@ let sfxCtx = null;
 
 function getSfxCtx() {
   if (!sfxCtx || sfxCtx.state === 'closed') {
-    sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const opts = selectedOutputDeviceId ? { sinkId: selectedOutputDeviceId } : {};
+    sfxCtx = new (window.AudioContext || window.webkitAudioContext)(opts);
   }
   if (sfxCtx.state === 'suspended') sfxCtx.resume();
   return sfxCtx;
