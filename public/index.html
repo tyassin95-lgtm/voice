@@ -1163,7 +1163,7 @@ async function initRNNoise() {
     mod._rnnoise_init();
     const state = mod._rnnoise_create();
     if (!state) throw new Error('rnnoise_create returned null');
-    const inPtr  = mod._malloc(RNNOISE_FRAME_SIZE * 4);
+    const inPtr  = mod._malloc(RNNOISE_FRAME_SIZE * 4); // 480 float32s
     const outPtr = mod._malloc(RNNOISE_FRAME_SIZE * 4);
     if (!inPtr || !outPtr) throw new Error('Failed to allocate WASM memory');
     rnnoiseModule    = mod;
@@ -1182,7 +1182,7 @@ function denoiseFrame(i16Frame) {
   if (!rnnoiseState) return i16Frame;
   const len = i16Frame.length;
   const f32 = new Float32Array(len);
-  for (let i = 0; i < len; i++) f32[i] = i16Frame[i]; // keep Int16 range for RNNoise
+  for (let i = 0; i < len; i++) f32[i] = i16Frame[i]; // RNNoise expects float32 in [-32768, 32767]
   const heapF32 = rnnoiseModule.HEAPF32;
   const inOff   = rnnoiseInputPtr  >> 2;
   const outOff  = rnnoiseOutputPtr >> 2;
