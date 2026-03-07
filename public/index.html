@@ -18,7 +18,7 @@
     --green:#3ba55d; --green-dim:rgba(59,165,93,0.15);
     --yellow:#fee75c; --yellow-dim:rgba(254,231,92,0.15);
     --text:#f2f3f5; --text-2:#b5bac1; --text-3:#949ba4;
-    --header-h:48px; --bottom-h:52px; --sidebar-w:240px;
+    --header-h:48px; --bottom-h:64px; --sidebar-w:240px;
     --radius:8px; --radius-sm:4px;
     --nav-bg:#1e1f22;
   }
@@ -253,8 +253,8 @@
   #ptt-indicator.visible{display:block}
 
   /* ═══ BOTTOM CONTROLS ═══ */
-  .bottom-controls{position:fixed;bottom:0;left:var(--sidebar-w);right:0;height:var(--bottom-h);background:var(--panel2);border-top:none;display:flex;align-items:center;justify-content:center;gap:6px;z-index:40;padding:0 16px}
-  .ctrl-btn{display:flex;flex-direction:column;align-items:center;gap:4px;background:transparent;border:none;border-radius:var(--radius);padding:6px 10px;cursor:pointer;transition:all 0.15s ease;touch-action:manipulation;user-select:none;min-width:52px;color:var(--text-2)}
+  .bottom-controls{position:fixed;bottom:0;left:var(--sidebar-w);right:0;height:var(--bottom-h);background:var(--panel2);border-top:none;display:flex;align-items:center;justify-content:center;gap:10px;z-index:40;padding:0 16px}
+  .ctrl-btn{display:flex;flex-direction:column;align-items:center;gap:5px;background:transparent;border:none;border-radius:var(--radius);padding:8px 12px;cursor:pointer;transition:all 0.15s ease;touch-action:manipulation;user-select:none;min-width:56px;color:var(--text-2)}
   .ctrl-btn:hover{color:var(--text)}
   .ctrl-btn:hover .ctrl-icon-circle{background:rgba(255,255,255,0.12)}
   .ctrl-btn:active .ctrl-icon-circle{transform:scale(0.9)}
@@ -262,9 +262,9 @@
   .ctrl-btn.active-red .ctrl-icon-circle{background:rgba(237,66,69,0.2);color:var(--red)}
   .ctrl-btn.active-accent{color:var(--accent2)}
   .ctrl-btn.active-accent .ctrl-icon-circle{background:rgba(88,101,242,0.2);color:var(--accent2)}
-  .ctrl-icon-circle{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;transition:all 0.15s ease;color:inherit}
-  .ctrl-icon-circle svg{width:18px;height:18px;fill:currentColor;flex-shrink:0}
-  .ctrl-label{font-size:10px;font-weight:500;color:inherit;text-transform:uppercase;letter-spacing:0.02em}
+  .ctrl-icon-circle{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;transition:all 0.15s ease;color:inherit}
+  .ctrl-icon-circle svg{width:20px;height:20px;fill:currentColor;flex-shrink:0}
+  .ctrl-label{font-size:11px;font-weight:500;color:inherit;text-transform:uppercase;letter-spacing:0.02em}
   .ctrl-btn.active-red .ctrl-label{color:var(--red)}
   .ctrl-btn.active-accent .ctrl-label{color:var(--accent2)}
   .status-bar{position:fixed;bottom:0;left:0;width:var(--sidebar-w);height:var(--bottom-h);background:var(--panel2);border-top:none;display:flex;align-items:center;padding:0 12px;gap:8px;z-index:41}
@@ -332,7 +332,7 @@
 
   /* ═══ MOBILE ═══ */
   @media(max-width:640px){
-    :root{ --header-h:48px; --bottom-h:56px; }
+    :root{ --header-h:48px; --bottom-h:66px; }
     .menu-btn { display:flex }
     .bc-label { display:none }
     .sidebar { transform:translateX(-100%); width:82vw; max-width:300px; z-index:50; top:0 }
@@ -342,16 +342,16 @@
     .app-header { left:0 }
     .main-panel { left:0; right:0; padding:12px 10px; bottom:var(--bottom-h) }
     .bottom-controls {
-      left:0; right:0; padding:0 8px; gap:4px;
+      left:0; right:0; padding:0 8px; gap:6px;
       overflow-x:auto; -webkit-overflow-scrolling:touch;
       justify-content:flex-start;
       scrollbar-width:none;
     }
     .bottom-controls::-webkit-scrollbar { display:none }
-    .ctrl-btn { padding:4px 8px; min-width:44px; flex-shrink:0; border-radius:var(--radius-sm) }
-    .ctrl-icon-circle { width:34px; height:34px }
-    .ctrl-icon-circle svg { width:16px; height:16px }
-    .ctrl-label { font-size:9px }
+    .ctrl-btn { padding:6px 8px; min-width:48px; flex-shrink:0; border-radius:var(--radius-sm) }
+    .ctrl-icon-circle { width:38px; height:38px }
+    .ctrl-icon-circle svg { width:18px; height:18px }
+    .ctrl-label { font-size:10px }
     .status-bar { display:none }
     .members-grid { grid-template-columns:repeat(2,1fr); gap:8px }
     .member-card { padding:12px 8px 10px }
@@ -372,10 +372,10 @@
 
   /* Very small phones */
   @media(max-width:380px){
-    .ctrl-btn { padding:4px 6px; min-width:40px }
-    .ctrl-icon-circle { width:30px; height:30px }
-    .ctrl-icon-circle svg { width:14px; height:14px }
-    .ctrl-label { font-size:8px }
+    .ctrl-btn { padding:4px 6px; min-width:44px }
+    .ctrl-icon-circle { width:34px; height:34px }
+    .ctrl-icon-circle svg { width:16px; height:16px }
+    .ctrl-label { font-size:9px }
     .members-grid { grid-template-columns:repeat(2,1fr); gap:6px }
     .bc-party-grid { grid-template-columns:repeat(2,1fr) }
   }
