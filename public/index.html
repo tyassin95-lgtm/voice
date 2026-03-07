@@ -1084,14 +1084,10 @@ const DISCORD_SAMPLE_RATE = 48000;
 const DISCORD_FRAME_MS    = 20;
 const DISCORD_FRAME_SIZE  = DISCORD_SAMPLE_RATE * DISCORD_FRAME_MS / 1000; // 960
 
-// Detect Opus support via MediaRecorder
-const OPUS_MIME = (() => {
-  const types = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'];
-  for (const t of types) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) return t;
-  }
-  return null;
-})();
+// Opus via MediaRecorder is disabled: individual timeslice chunks lack the
+// container header and cannot be decoded by decodeAudioData on the receiving
+// end, causing silent audio drops.  The PCM path works reliably instead.
+const OPUS_MIME = null;
 
 let opusRecorder   = null;   // MediaRecorder for Opus encoding
 let opusAllowed    = false;  // true when PTT active or VAD active (gate)
