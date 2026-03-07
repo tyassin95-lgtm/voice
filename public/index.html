@@ -670,6 +670,12 @@ const localMuted  = {};
 const localVolume = {};
 let popoverTarget = null;
 
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
 function switchAuthTab(tab) {
   ['login','register','guest'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
@@ -850,13 +856,18 @@ function startListeningPTT() {
 
 async function saveSettings() {
   if (isGuest || !myPassword) return;
-  const res = await fetch('/voice/api/save-settings', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: myUsername, password: myPassword, settings })
-  });
-  const data = await res.json();
-  if (data.ok) notify('Settings saved ✓', 'success');
-  else notify('Could not save settings', 'error');
+  try {
+    const res = await fetch('/voice/api/save-settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: myUsername, password: myPassword, settings })
+    });
+    if (!res.ok) return notify('Could not save settings', 'error');
+    const data = await res.json();
+    if (data.ok) notify('Settings saved ✓', 'success');
+    else notify('Could not save settings', 'error');
+  } catch (e) {
+    notify('Could not reach server — settings not saved', 'error');
+  }
 }
 
 function onMuteKeybindToggle() {
@@ -1878,7 +1889,7 @@ function renderSidebar() {
           const muteLabel = m.serverMuted ? 'Unmute' : 'Mute';
           adminBtns.innerHTML =
             `<button class="ch-admin-btn mute-btn" onclick="sidebarAdminMute('${m.socketId}',${m.serverMuted},event)">${muteLabel}</button>` +
-            `<button class="ch-admin-btn" onclick="sidebarAdminKick('${m.socketId}','${m.username.replace(/'/g,'')}',event)">Kick</button>`;
+            `<button class="ch-admin-btn" onclick="sidebarAdminKick('${m.socketId}','${esc(m.username).replace(/'/g,'&#39;')}',event)">Kick</button>`;
           row.appendChild(adminBtns);
         }
 
@@ -1938,7 +1949,7 @@ function renderMainPanel() {
     const bcInfo = broadcasters.map(b => {
       const targets = b.broadcastTargets;
       const targetText = targets === 'all' ? 'all parties' : `Party ${Array.isArray(targets) ? targets.sort((a,b)=>a-b).join(', ') : targets}`;
-      return `${b.username} → ${targetText}`;
+      return `${esc(b.username)} → ${targetText}`;
     }).join(' | ');
     html += `<div class="broadcast-banner"><div class="bc-banner-dot" style="${broadcasters.some(b=>b.broadcastPaused)?'animation:none;opacity:0.4':''}"></div><div class="bc-banner-text">${broadcasters.some(b=>b.broadcastPaused)?'⏸ PAUSED —':'LIVE BROADCAST —'} ${bcInfo}</div></div>`;
   }
@@ -1968,8 +1979,8 @@ function memberCardHTML(m, isMe) {
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
     id="card-${m.socketId}"
     ${!isMe?`onclick="openPopover('${m.socketId}',event)"`:''}>
-    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${m.username[0].toUpperCase()}</div>
-    <div class="member-name">${m.username}</div>
+    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${esc(m.username[0].toUpperCase())}</div>
+    <div class="member-name">${esc(m.username)}</div>
     ${isMe?'<div class="member-you">· you</div>':''}
     <div class="member-tags">
       ${m.isBroadcaster?'<span class="tag tag-broadcaster">Broadcaster</span>':''}
