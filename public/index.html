@@ -389,29 +389,29 @@
     </div>
 
     <!-- Login -->
-    <div id="tab-login">
+    <form id="tab-login" onsubmit="event.preventDefault(); doLogin();">
       <div class="field"><label>Username</label><input type="text" id="login-user" placeholder="Your username" autocomplete="username"/></div>
       <div class="field"><label>Password</label><input type="password" id="login-pass" placeholder="Password" autocomplete="current-password"/></div>
       <div class="modal-err" id="login-err"></div>
-      <button class="btn-primary" onclick="doLogin()">Sign In</button>
-    </div>
+      <button type="submit" class="btn-primary">Sign In</button>
+    </form>
 
     <!-- Register -->
-    <div id="tab-register" style="display:none">
+    <form id="tab-register" style="display:none" onsubmit="event.preventDefault(); doRegister();">
       <div class="field"><label>Username</label><input type="text" id="reg-user" placeholder="Choose a username"/></div>
       <div class="field"><label>Password</label><input type="password" id="reg-pass" placeholder="Choose a password"/></div>
       <div class="field"><label>Confirm Password</label><input type="password" id="reg-pass2" placeholder="Repeat password"/></div>
       <div class="modal-err" id="reg-err"></div>
-      <button class="btn-primary" onclick="doRegister()">Create Account</button>
-    </div>
+      <button type="submit" class="btn-primary">Create Account</button>
+    </form>
 
     <!-- Guest -->
-    <div id="tab-guest" style="display:none">
+    <form id="tab-guest" style="display:none" onsubmit="event.preventDefault(); doGuest();">
       <div class="field"><label>Display Name</label><input type="text" id="guest-name" placeholder="Enter your name" maxlength="24"/></div>
       <div class="modal-err" id="guest-err"></div>
-      <button class="btn-primary" onclick="doGuest()">Join as Guest</button>
+      <button type="submit" class="btn-primary">Join as Guest</button>
       <p style="font-size:11px;color:var(--text-3);margin-top:12px;text-align:center">Settings won't be saved as a guest</p>
-    </div>
+    </form>
   </div>
 </div>
 
@@ -683,17 +683,22 @@ async function doLogin() {
   const username = document.getElementById('login-user').value.trim();
   const password = document.getElementById('login-pass').value;
   if (!username || !password) return setErr('login-err', 'Fill in all fields');
-  const res = await fetch('/voice/api/login', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  if (!data.ok) return setErr('login-err', data.error);
-  myUsername = data.username;
-  myPassword = password;
-  isGuest    = false;
-  applySettings(data.settings);
-  enterApp();
+  try {
+    const res = await fetch('/voice/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) return setErr('login-err', 'Server error — try again');
+    const data = await res.json();
+    if (!data.ok) return setErr('login-err', data.error);
+    myUsername = data.username;
+    myPassword = password;
+    isGuest    = false;
+    applySettings(data.settings);
+    enterApp();
+  } catch (e) {
+    setErr('login-err', 'Could not reach server — try again');
+  }
 }
 
 async function doRegister() {
@@ -703,17 +708,22 @@ async function doRegister() {
   if (!username || !password) return setErr('reg-err', 'Fill in all fields');
   if (password !== pass2)     return setErr('reg-err', 'Passwords do not match');
   if (password.length < 4)    return setErr('reg-err', 'Password too short (min 4 chars)');
-  const res = await fetch('/voice/api/register', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password })
-  });
-  const data = await res.json();
-  if (!data.ok) return setErr('reg-err', data.error);
-  myUsername = username;
-  myPassword = password;
-  isGuest    = false;
-  notify('Account created! Welcome, ' + username, 'success');
-  enterApp();
+  try {
+    const res = await fetch('/voice/api/register', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (!res.ok) return setErr('reg-err', 'Server error — try again');
+    const data = await res.json();
+    if (!data.ok) return setErr('reg-err', data.error);
+    myUsername = username;
+    myPassword = password;
+    isGuest    = false;
+    notify('Account created! Welcome, ' + username, 'success');
+    enterApp();
+  } catch (e) {
+    setErr('reg-err', 'Could not reach server — try again');
+  }
 }
 
 function doGuest() {
