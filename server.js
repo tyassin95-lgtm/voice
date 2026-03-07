@@ -260,6 +260,18 @@ io.on('connection', (socket) => {
     io.emit('party-update', getPartyList());
   });
 
+  // ── Latency: respond to ping-check so client can measure RTT ──
+  socket.on('ping-check', (cb) => {
+    if (typeof cb === 'function') cb();
+  });
+
+  // ── Latency: relay a user's reported latency to their party ──
+  socket.on('latency-report', ({ latency }) => {
+    const user = users[socket.id];
+    if (!user || user.party === null) return;
+    socket.to(`party-${user.party}`).volatile.emit('latency-update', { socketId: socket.id, latency });
+  });
+
   // ── Audio relay ──
   // Use volatile for audio: drops packets under backpressure instead of queuing
   // (queued audio = ever-growing latency, dropped audio = momentary glitch)
