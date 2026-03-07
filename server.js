@@ -7,7 +7,6 @@ const fs      = require('fs');
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, {
-  path: '/voice/socket.io',
   cors: { origin: '*' },
   maxHttpBufferSize: 5e6,
   pingTimeout:  60000,
