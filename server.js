@@ -7,18 +7,18 @@ const fs      = require('fs');
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, {
+  path: '/voice/socket.io',
   cors: { origin: '*' },
   maxHttpBufferSize: 5e6,
   pingTimeout:  60000,
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
-  // Disable per-message compression for audio — saves CPU, audio is already dense
   perMessageDeflate: false
 });
 
 app.use(express.json());
 app.use('/voice', express.static(path.join(__dirname, 'public')));
-app.get('/voice', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/voice', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ─── ACCOUNTS (flat JSON file) ────────────────────────────────────────────────
 const ACCOUNTS_FILE = path.join(__dirname, 'accounts.json');
@@ -84,20 +84,25 @@ const parties = {};
 const NUM_PARTIES = 12;
 for (let i = 1; i <= NUM_PARTIES; i++) parties[i] = new Set();
 
+function serializeUser(sid) {
+  const u = users[sid];
+  return {
+    socketId:         sid,
+    username:         u?.username,
+    isBroadcaster:    u?.isBroadcaster    || false,
+    broadcastTargets: u?.broadcastTargets  || 'all',
+    broadcastPaused:  u?.broadcastPaused   || false,
+    isAdmin:          u?.isAdmin           || false,
+    serverMuted:      u?.serverMuted       || false,
+    selfMuted:        u?.selfMuted         || false,
+    selfDeafened:     u?.selfDeafened       || false
+  };
+}
+
 function getPartyList() {
   const result = {};
   for (let i = 1; i <= NUM_PARTIES; i++) {
-    result[i] = [...parties[i]].map(sid => ({
-      socketId:         sid,
-      username:         users[sid]?.username,
-      isBroadcaster:    users[sid]?.isBroadcaster    || false,
-      broadcastTargets: users[sid]?.broadcastTargets  || 'all',
-      broadcastPaused:  users[sid]?.broadcastPaused   || false,
-      isAdmin:          users[sid]?.isAdmin           || false,
-      serverMuted:      users[sid]?.serverMuted       || false,
-      selfMuted:        users[sid]?.selfMuted         || false,
-      selfDeafened:     users[sid]?.selfDeafened       || false
-    }));
+    result[i] = [...parties[i]].map(serializeUser);
   }
   return result;
 }
@@ -126,9 +131,9 @@ io.on('connection', (socket) => {
     socket.join(`party-${partyId}`);
     const peersInParty = [...parties[partyId]]
       .filter(sid => sid !== socket.id)
-      .map(sid => ({ socketId: sid, username: users[sid]?.username, isBroadcaster: users[sid]?.isBroadcaster || false, broadcastTargets: users[sid]?.broadcastTargets || 'all', broadcastPaused: users[sid]?.broadcastPaused || false, isAdmin: users[sid]?.isAdmin || false, serverMuted: users[sid]?.serverMuted || false, selfMuted: users[sid]?.selfMuted || false, selfDeafened: users[sid]?.selfDeafened || false }));
+      .map(serializeUser);
     socket.emit('party-peers', { peers: peersInParty, partyId });
-    socket.to(`party-${partyId}`).emit('peer-joined', { socketId: socket.id, username: user.username, isBroadcaster: user.isBroadcaster, broadcastTargets: user.broadcastTargets, broadcastPaused: user.broadcastPaused, isAdmin: user.isAdmin, serverMuted: user.serverMuted, selfMuted: user.selfMuted, selfDeafened: user.selfDeafened });
+    socket.to(`party-${partyId}`).emit('peer-joined', serializeUser(socket.id));
     io.emit('party-update', getPartyList());
   });
 
@@ -213,7 +218,6 @@ io.on('connection', (socket) => {
     const target = users[targetId];
     if (!target) return;
 
-    // Remove from old party
     if (target.party !== null) {
       parties[target.party].delete(targetId);
       io.to(`party-${target.party}`).emit('peer-left', { socketId: targetId });
@@ -221,7 +225,6 @@ io.on('connection', (socket) => {
       if (targetSocket) targetSocket.leave(`party-${target.party}`);
     }
 
-    // Add to new party
     target.party = toPartyId;
     parties[toPartyId].add(targetId);
     const targetSocket = io.sockets.sockets.get(targetId);
@@ -230,11 +233,9 @@ io.on('connection', (socket) => {
 
       const peersInParty = [...parties[toPartyId]]
         .filter(sid => sid !== targetId)
-        .map(sid => ({ socketId: sid, username: users[sid]?.username, isBroadcaster: users[sid]?.isBroadcaster || false, broadcastTargets: users[sid]?.broadcastTargets || 'all', broadcastPaused: users[sid]?.broadcastPaused || false, isAdmin: users[sid]?.isAdmin || false, serverMuted: users[sid]?.serverMuted || false, selfMuted: users[sid]?.selfMuted || false, selfDeafened: users[sid]?.selfDeafened || false }));
+        .map(serializeUser);
       targetSocket.emit('party-peers', { peers: peersInParty, partyId: toPartyId });
-
-      targetSocket.to(`party-${toPartyId}`).emit('peer-joined', { socketId: targetId, username: target.username, isBroadcaster: target.isBroadcaster, broadcastTargets: target.broadcastTargets, broadcastPaused: target.broadcastPaused, isAdmin: target.isAdmin, serverMuted: target.serverMuted, selfMuted: target.selfMuted, selfDeafened: target.selfDeafened });
-
+      targetSocket.to(`party-${toPartyId}`).emit('peer-joined', serializeUser(targetId));
       targetSocket.emit('admin-moved', { by: admin.username, toPartyId });
     }
 
@@ -298,7 +299,7 @@ io.on('connection', (socket) => {
 });
 
 // Express error handler — return JSON instead of HTML stack traces
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   console.error('[Express error]', err.message);
   res.status(err.status || 500).json({ ok: false, error: 'Server error' });
 });
