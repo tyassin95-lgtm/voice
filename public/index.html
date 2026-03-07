@@ -1047,17 +1047,30 @@ function initPTTTouchButton() {
 
 async function initAudio() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl:  true,
-        channelCount:     1,
-        sampleRate:       48000,
-        latency:          0.01
-      },
-      video: false
-    });
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression: true,
+          echoCancellation: true,
+          autoGainControl:  true,
+          channelCount:     1,
+          sampleRate:       48000,
+          latency:          0.01
+        },
+        video: false
+      });
+    } catch (constraintErr) {
+      // Fallback for mobile browsers that may not support all constraints
+      console.warn('Audio constraints (channelCount/sampleRate/latency) not supported, retrying without them:', constraintErr);
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression: true,
+          echoCancellation: true,
+          autoGainControl:  true
+        },
+        video: false
+      });
+    }
     await buildAudioPipeline();
     initRNNoise(); // non-blocking; falls back gracefully if unavailable
     notify('Microphone ready', 'success');
