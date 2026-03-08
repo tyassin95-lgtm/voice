@@ -343,31 +343,55 @@ io.on('connection', (socket) => {
   // ── Audio relay ──
   // Use volatile for audio: drops packets under backpressure instead of queuing
   // (queued audio = ever-growing latency, dropped audio = momentary glitch)
-  socket.on('audio-chunk', (chunk) => {
-    const user = users[socket.id];
-    if (!user || user.serverMuted) return;
-    if (user.isBroadcaster) {
-      if (user.broadcastPaused) {
-        // When paused, still allow talking within own party
-        if (user.party !== null) {
-          socket.to(`party-${user.party}`).volatile.emit('audio-from', { from: socket.id, chunk });
-        }
-        return;
-      }
-      const targets = user.broadcastTargets;
-      if (targets === 'all') {
-        // Broadcast to everyone except self
-        socket.broadcast.volatile.emit('audio-from', { from: socket.id, chunk });
-      } else if (Array.isArray(targets)) {
-        // Broadcast to specific party rooms
-        for (const partyId of targets) {
-          socket.to(`party-${partyId}`).volatile.emit('audio-from', { from: socket.id, chunk });
-        }
-      }
-    } else if (user.party !== null) {
-      socket.to(`party-${user.party}`).volatile.emit('audio-from', { from: socket.id, chunk });
+socket.on('audio-chunk', (chunk) => {
+  const user = users[socket.id];
+  if (!user || user.serverMuted) return;
+
+  // Broadcaster logic
+  if (user.isBroadcaster) {
+
+    // Rule 1: must be in a party
+    if (user.party === null) return;
+
+    // Rule 3: paused = talk only to own party
+    if (user.broadcastPaused) {
+      socket.to(`party-${user.party}`).volatile.emit('audio-from', {
+        from: socket.id,
+        chunk
+      });
+      return;
     }
-  });
+
+    // Rule 2: broadcast only to parties
+    const targets = user.broadcastTargets;
+
+    if (targets === 'all') {
+      for (let i = 1; i <= NUM_PARTIES; i++) {
+        socket.to(`party-${i}`).volatile.emit('audio-from', {
+          from: socket.id,
+          chunk
+        });
+      }
+    } else if (Array.isArray(targets)) {
+      for (const partyId of targets) {
+        socket.to(`party-${partyId}`).volatile.emit('audio-from', {
+          from: socket.id,
+          chunk
+        });
+      }
+    }
+
+    return;
+  }
+
+  // Normal user audio
+  if (user.party !== null) {
+    socket.to(`party-${user.party}`).volatile.emit('audio-from', {
+      from: socket.id,
+      chunk
+    });
+  }
+});
 
   socket.on('disconnect', () => {
     const user = users[socket.id];
