@@ -37,7 +37,7 @@ app.post('/voice/api/register', (req, res) => {
   if (!username || !password) return res.json({ ok: false, error: 'Missing fields' });
   const accounts = loadAccounts();
   if (accounts[username.toLowerCase()]) return res.json({ ok: false, error: 'Username taken' });
-  accounts[username.toLowerCase()] = { username, password, settings: defaultSettings() };
+  accounts[username.toLowerCase()] = { username, password, role: 'user', settings: defaultSettings() };
   saveAccounts(accounts);
   res.json({ ok: true });
 });
@@ -47,7 +47,7 @@ app.post('/voice/api/login', (req, res) => {
   const accounts = loadAccounts();
   const acc = accounts[username?.toLowerCase()];
   if (!acc || acc.password !== password) return res.json({ ok: false, error: 'Invalid credentials' });
-  res.json({ ok: true, username: acc.username, settings: acc.settings });
+  res.json({ ok: true, username: acc.username, role: acc.role || 'user', settings: acc.settings });
 });
 
 app.post('/voice/api/save-settings', (req, res) => {
@@ -74,8 +74,8 @@ function defaultSettings() {
   };
 }
 
-// ─── ADMIN PASSWORD ───────────────────────────────────────────────────────────
-const ADMIN_PASSWORD = 'OathGuild2026';
+// ─── OWNER CODE (formerly admin password) ────────────────────────────────────
+const OWNER_CODE = 'OathGuild@1995';
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 const users   = {}; // socketId -> { username, party, isBroadcaster, isAdmin, serverMuted, selfMuted, selfDeafened }
@@ -112,9 +112,16 @@ io.on('connection', (socket) => {
   socket.emit('init', { partyList: getPartyList() });
 
   socket.on('join', ({ username }) => {
-    users[socket.id] = { username, party: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: false, serverMuted: false, selfMuted: false, selfDeafened: false };
-    console.log(`${username} joined`);
+    // Look up persistent role from accounts
+    const accounts = loadAccounts();
+    const acc = accounts[username?.toLowerCase()];
+    const role = acc?.role || 'user';
+    const autoAdmin = role === 'admin' || role === 'owner';
+    users[socket.id] = { username, party: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role };
+    console.log(`${username} joined (role: ${role}${autoAdmin ? ', auto-admin' : ''})`);
     io.emit('party-update', getPartyList());
+    // Notify the client of their role-based admin status
+    if (autoAdmin) socket.emit('role-admin-granted', { role });
   });
 
   socket.on('join-party', ({ partyId }) => {
@@ -168,20 +175,94 @@ io.on('connection', (socket) => {
     io.emit('party-update', getPartyList());
   });
 
-  // ── Admin: claim powers ──
+  // ── Admin: claim powers (owner code grants admin + opens management) ──
   socket.on('claim-admin', ({ password }, cb) => {
     if (typeof cb !== 'function') return;
-    if (password !== ADMIN_PASSWORD) return cb({ ok: false, error: 'Wrong password' });
+    if (password !== OWNER_CODE) return cb({ ok: false, error: 'Wrong password' });
     const user = users[socket.id];
     if (!user) return cb({ ok: false });
     user.isAdmin = true;
     io.emit('party-update', getPartyList());
-    cb({ ok: true });
+    cb({ ok: true, isOwner: true });
   });
 
   socket.on('revoke-admin', () => {
     const user = users[socket.id];
-    if (user) { user.isAdmin = false; io.emit('party-update', getPartyList()); }
+    if (user) {
+      // Role-based admins (admin/owner stored in account) keep their role
+      // but can voluntarily deactivate session admin powers
+      user.isAdmin = false;
+      io.emit('party-update', getPartyList());
+    }
+  });
+
+  // ── Admin: re-claim powers based on stored role (no password needed) ──
+  socket.on('claim-role-admin', () => {
+    const user = users[socket.id];
+    if (!user) return;
+    if (user.role === 'admin' || user.role === 'owner') {
+      user.isAdmin = true;
+      io.emit('party-update', getPartyList());
+    }
+  });
+
+  // ── Owner: search registered users ──
+  socket.on('owner-search-users', ({ query, ownerCode }, cb) => {
+    if (typeof cb !== 'function') return;
+    if (ownerCode !== OWNER_CODE) return cb({ ok: false, error: 'Unauthorized' });
+    const accounts = loadAccounts();
+    const q = (query || '').toLowerCase().trim();
+    const results = Object.values(accounts)
+      .filter(acc => !q || acc.username.toLowerCase().includes(q))
+      .map(acc => ({ username: acc.username, role: acc.role || 'user' }))
+      .slice(0, 50);
+    cb({ ok: true, users: results });
+  });
+
+  // ── Owner: grant admin role ──
+  socket.on('owner-grant-admin', ({ targetUsername, ownerCode }, cb) => {
+    if (typeof cb !== 'function') return;
+    if (ownerCode !== OWNER_CODE) return cb({ ok: false, error: 'Unauthorized' });
+    const accounts = loadAccounts();
+    const key = targetUsername?.toLowerCase();
+    const acc = accounts[key];
+    if (!acc) return cb({ ok: false, error: 'User not found' });
+    if (acc.role === 'owner') return cb({ ok: false, error: 'Cannot modify owner role' });
+    acc.role = 'admin';
+    saveAccounts(accounts);
+    // Update any currently connected session for this user
+    for (const [sid, u] of Object.entries(users)) {
+      if (u.username?.toLowerCase() === key) {
+        u.isAdmin = true;
+        u.role = 'admin';
+        io.to(sid).emit('role-admin-granted', { role: 'admin' });
+      }
+    }
+    io.emit('party-update', getPartyList());
+    cb({ ok: true });
+  });
+
+  // ── Owner: revoke admin role ──
+  socket.on('owner-revoke-admin', ({ targetUsername, ownerCode }, cb) => {
+    if (typeof cb !== 'function') return;
+    if (ownerCode !== OWNER_CODE) return cb({ ok: false, error: 'Unauthorized' });
+    const accounts = loadAccounts();
+    const key = targetUsername?.toLowerCase();
+    const acc = accounts[key];
+    if (!acc) return cb({ ok: false, error: 'User not found' });
+    if (acc.role === 'owner') return cb({ ok: false, error: 'Cannot modify owner role' });
+    acc.role = 'user';
+    saveAccounts(accounts);
+    // Update any currently connected session for this user
+    for (const [sid, u] of Object.entries(users)) {
+      if (u.username?.toLowerCase() === key) {
+        u.isAdmin = false;
+        u.role = 'user';
+        io.to(sid).emit('role-admin-revoked');
+      }
+    }
+    io.emit('party-update', getPartyList());
+    cb({ ok: true });
   });
 
   // ── Admin: server-mute a user ──
