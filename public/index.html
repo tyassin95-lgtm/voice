@@ -1706,7 +1706,7 @@ socket.on('audio-from', ({ from, chunk }) => {
             },
             error: (e) => {
               console.warn('[Opus] Decoder error for', from, ':', e);
-              try { peerDecoders[from]?.close(); } catch(ex) {}
+              try { peerDecoders[from]?.close(); } catch(ex) { console.warn('[Opus] Decoder close failed:', ex); }
               delete peerDecoders[from];
             }
           });
@@ -1728,7 +1728,7 @@ socket.on('audio-from', ({ from, chunk }) => {
             data: audioData
           });
           peerDecoders[from].decode(encodedChunk);
-        } catch (e) { /* decode error — frame dropped */ }
+        } catch (e) { /* decode error — stale/partial frame dropped, same as decodeAudioData .catch */ }
         return;
       }
     }
@@ -1784,7 +1784,7 @@ function removePeerPlayer(sid) {
     delete peerPlayers[sid];
   }
   if (peerDecoders[sid]) {
-    try { peerDecoders[sid].close(); } catch(e){}
+    try { peerDecoders[sid].close(); } catch(e){ console.warn('[Opus] Decoder cleanup failed:', e); }
     delete peerDecoders[sid];
   }
   delete peerLastSeq[sid];
