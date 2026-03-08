@@ -35,10 +35,11 @@
       "pushToTalk": false,
       "pttKey": "Space",
       "inputVolume": 100
-    }
+    },
+    "role": "user"
   },
-  "jimmydark\u3066": {
-    "username": "JimmyDark\u3066",
+  "jimmydarkて": {
+    "username": "JimmyDarkて",
     "password": "testing69",
     "settings": {
       "micSensitivity": 1,

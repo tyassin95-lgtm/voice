@@ -2057,9 +2057,9 @@ function doMgmtSearch(query) {
       if (isOwnerRole) {
         actionBtn = '<span style="font-size:11px;color:var(--text-3);white-space:nowrap">Owner</span>';
       } else if (isAdminRole) {
-        actionBtn = '<button class="mgmt-btn mgmt-btn-revoke" onclick="mgmtRevokeAdmin(\'' + esc(u.username).replace(/'/g, "\\'") + '\')">Revoke Admin</button>';
+        actionBtn = '<button class="mgmt-btn mgmt-btn-revoke" data-mgmt-action="revoke" data-mgmt-user="' + esc(u.username) + '">Revoke Admin</button>';
       } else {
-        actionBtn = '<button class="mgmt-btn mgmt-btn-grant" onclick="mgmtGrantAdmin(\'' + esc(u.username).replace(/'/g, "\\'") + '\')">Grant Admin</button>';
+        actionBtn = '<button class="mgmt-btn mgmt-btn-grant" data-mgmt-action="grant" data-mgmt-user="' + esc(u.username) + '">Grant Admin</button>';
       }
       return '<div class="mgmt-user-row">' +
         '<div class="mgmt-user-avatar">' + esc(u.username[0].toUpperCase()) + '</div>' +
@@ -2068,6 +2068,15 @@ function doMgmtSearch(query) {
         actionBtn +
       '</div>';
     }).join('');
+    // Use event delegation for grant/revoke buttons
+    listEl.querySelectorAll('[data-mgmt-action]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const action = this.getAttribute('data-mgmt-action');
+        const username = this.getAttribute('data-mgmt-user');
+        if (action === 'grant') mgmtGrantAdmin(username);
+        else if (action === 'revoke') mgmtRevokeAdmin(username);
+      });
+    });
   });
 }
 
