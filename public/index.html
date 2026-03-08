@@ -2886,7 +2886,7 @@ document.addEventListener('touchstart', () => {
 document.addEventListener('click', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
-}, { once: true });
+}, { passive: true });
 </script>
 </body>
 </html>
