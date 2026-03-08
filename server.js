@@ -7,7 +7,6 @@ const fs      = require('fs');
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, {
-  path: '/voice/socket.io',
   cors: { origin: '*' },
   maxHttpBufferSize: 5e6,
   pingTimeout:  60000,
@@ -193,9 +192,6 @@ io.on('connection', (socket) => {
     if (!target) return;
     target.serverMuted = muted;
     io.to(targetId).emit('server-muted', { muted, by: admin.username });
-    // Notify all connected peers about server-mute state change so they can
-    // enable/disable the incoming WebRTC track from this user
-    io.emit('server-mute-peer', { socketId: targetId, muted });
     io.emit('party-update', getPartyList());
     console.log(`[ADMIN] ${admin.username} ${muted ? 'muted' : 'unmuted'} ${target.username}`);
   });
@@ -275,20 +271,27 @@ io.on('connection', (socket) => {
     socket.to(`party-${user.party}`).volatile.emit('latency-update', { socketId: socket.id, latency });
   });
 
-  // ── WebRTC signaling relay ──
-  socket.on('webrtc-offer', ({ to, offer }) => {
-    const target = io.sockets.sockets.get(to);
-    if (target) target.emit('webrtc-offer', { from: socket.id, offer });
-  });
-
-  socket.on('webrtc-answer', ({ to, answer }) => {
-    const target = io.sockets.sockets.get(to);
-    if (target) target.emit('webrtc-answer', { from: socket.id, answer });
-  });
-
-  socket.on('webrtc-ice-candidate', ({ to, candidate }) => {
-    const target = io.sockets.sockets.get(to);
-    if (target) target.emit('webrtc-ice-candidate', { from: socket.id, candidate });
+  // ── Audio relay ──
+  // Use volatile for audio: drops packets under backpressure instead of queuing
+  // (queued audio = ever-growing latency, dropped audio = momentary glitch)
+  socket.on('audio-chunk', (chunk) => {
+    const user = users[socket.id];
+    if (!user || user.serverMuted) return;
+    if (user.isBroadcaster) {
+      if (user.broadcastPaused) return;
+      const targets = user.broadcastTargets;
+      if (targets === 'all') {
+        // Broadcast to everyone except self
+        socket.broadcast.volatile.emit('audio-from', { from: socket.id, chunk });
+      } else if (Array.isArray(targets)) {
+        // Broadcast to specific party rooms
+        for (const partyId of targets) {
+          socket.to(`party-${partyId}`).volatile.emit('audio-from', { from: socket.id, chunk });
+        }
+      }
+    } else if (user.party !== null) {
+      socket.to(`party-${user.party}`).volatile.emit('audio-from', { from: socket.id, chunk });
+    }
   });
 
   socket.on('disconnect', () => {

@@ -722,32 +722,10 @@ let sourceNode    = null;
 let processorNode = null;
 let SAMPLE_RATE   = 48000;
 
-const peerPlayers   = {};
-const localMuted    = {};
-const localVolume   = {};
-let popoverTarget   = null;
-
-/* ═══ WebRTC STATE ═══ */
-const peerConnections = {};   // socketId → RTCPeerConnection
-let   denoisedStream  = null; // MediaStream with RNNoise-processed track for WebRTC
-
-const ICE_CONFIG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:178.104.14.42:3478' },
-    {
-      urls: [
-        'turn:178.104.14.42:3478?transport=udp',
-        'turn:178.104.14.42:3478?transport=tcp'
-      ],
-      username: 'oathly',
-      credential: 'YOUR_CHOSEN_PASSWORD'
-    }
-  ]
-};
-
-const ICE_RESTART_DELAY_MS = 3000;   // delay before restarting ICE on disconnected state
-const SPEAKING_THRESHOLD   = 10;     // audio level threshold for speaking detection (0–255)
+const peerPlayers = {};
+const localMuted  = {};
+const localVolume = {};
+let popoverTarget = null;
 
 /* ═══ SVG ICON DEFINITIONS ═══ */
 const SVG_MIC_ON   = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V21c0 .55.45 1 1 1s1-.45 1-1v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>';
@@ -1177,10 +1155,6 @@ document.addEventListener('keyup', e => {
 function setPTTTransmit(active) {
   if (!localStream) return;
   localStream.getAudioTracks().forEach(t => t.enabled = active);
-  // Enable/disable the outgoing audio track on all WebRTC peer connections
-  Object.values(peerConnections).forEach(pc => {
-    pc.getSenders().forEach(s => { if (s.track && s.track.kind === 'audio') s.track.enabled = active; });
-  });
   document.getElementById('ptt-indicator').classList.toggle('visible', active);
   playSound(active ? 'ptt-on' : 'ptt-off');
 }
@@ -1461,7 +1435,6 @@ async function buildAudioPipeline() {
   inputGainNode.gain.value = settings.inputVolume / 100;
   sourceNode.connect(inputGainNode);
 
-  // ── VAD capture worklet (for energy/VAD UI only, not transmission) ──
   let useWorklet = false;
   if (audioCtx.audioWorklet) {
     try {
@@ -1515,104 +1488,8 @@ async function buildAudioPipeline() {
     processorNode.connect(audioCtx.destination);
   }
 
-  // ── Build denoised MediaStream for WebRTC ──
-  await _buildDenoisedStream();
-
-  // After rebuilding the denoised stream, replace the track on all existing peer senders
-  // so they don't hold a reference to an ended track from a previous build.
-  const newTrack = getOutgoingTrack();
-  if (newTrack) {
-    for (const sid of Object.keys(peerConnections)) {
-      const pc = peerConnections[sid];
-      if (!pc) continue;
-      for (const sender of pc.getSenders()) {
-        if (sender.track && sender.track.kind === 'audio') {
-          sender.replaceTrack(newTrack).catch(e =>
-            console.warn('[WebRTC] replaceTrack failed for', sid, e));
-        }
-      }
-    }
-  }
-
-  if (settings.pushToTalk || settings.pttTouch) {
-    localStream.getAudioTracks().forEach(t => t.enabled = false);
-    if (denoisedStream) denoisedStream.getAudioTracks().forEach(t => t.enabled = false);
-  }
+  if (settings.pushToTalk || settings.pttTouch) localStream.getAudioTracks().forEach(t => t.enabled = false);
   updatePTTButton();
-}
-
-async function _buildDenoisedStream() {
-  // Create a processing chain: mic → inputGain → RNNoise ScriptProcessor → destination node → MediaStream
-  // Note: ScriptProcessor (deprecated) is used here intentionally because RNNoise WASM module
-  // (_rnnoise_process_frame) can only be called from the main thread. AudioWorklets run in a
-  // separate thread and cannot access main-thread WASM memory.
-  const denoiseNode = audioCtx.createScriptProcessor(4096, 1, 1);
-  // Input accumulation buffer: only needs to hold up to RNNOISE_FRAME_SIZE-1 leftover samples
-  const _dnBuf   = new Float32Array(RNNOISE_FRAME_SIZE);
-  let   _dnWrite = 0;
-  // Output ring buffer: must hold max carry-over + max frames per callback
-  // worst case: ~480 carry-over + ceil(4576/480)*480 = 4800 samples
-  const _dnOut   = new Float32Array(8192);
-  let   _dnRead  = 0;
-  let   _dnAvail = 0;
-
-  denoiseNode.onaudioprocess = (e) => {
-    const inCh  = e.inputBuffer.getChannelData(0);
-    const outCh = e.outputBuffer.getChannelData(0);
-
-    if (settings.noiseCancelation !== false && rnnoiseState) {
-      // Buffer input samples and process through RNNoise in 480-sample frames
-      for (let i = 0; i < inCh.length; i++) {
-        _dnBuf[_dnWrite++] = inCh[i];
-        if (_dnWrite >= RNNOISE_FRAME_SIZE) {
-          // Convert to Int16 range for RNNoise
-          const i16 = new Int16Array(RNNOISE_FRAME_SIZE);
-          for (let j = 0; j < RNNOISE_FRAME_SIZE; j++) {
-            const s = _dnBuf[j];
-            i16[j] = s < 0 ? (s * 0x8000) | 0 : (s * 0x7FFF) | 0;
-          }
-          const processed = denoiseFrame(i16);
-          // Convert back to float32 [-1, 1]
-          for (let j = 0; j < RNNOISE_FRAME_SIZE; j++) {
-            _dnOut[_dnAvail++] = processed[j] / (processed[j] < 0 ? 0x8000 : 0x7FFF);
-          }
-          _dnWrite = 0;
-        }
-      }
-      // Output processed samples
-      for (let i = 0; i < outCh.length; i++) {
-        if (_dnRead < _dnAvail) {
-          outCh[i] = _dnOut[_dnRead++];
-        } else {
-          outCh[i] = 0;
-        }
-      }
-      // Compact output buffer
-      if (_dnRead > 0) {
-        const remaining = _dnAvail - _dnRead;
-        if (remaining > 0) _dnOut.copyWithin(0, _dnRead, _dnAvail);
-        _dnAvail = remaining;
-        _dnRead  = 0;
-      }
-    } else {
-      // Pass through unchanged
-      for (let i = 0; i < inCh.length; i++) outCh[i] = inCh[i];
-    }
-  };
-
-  const destNode = audioCtx.createMediaStreamDestination();
-  inputGainNode.connect(denoiseNode);
-  denoiseNode.connect(destNode);
-
-  // ScriptProcessor requires a live path to audioCtx.destination to keep processing.
-  // Route through a zero-gain node so no audible output leaks but the graph stays alive.
-  const keepAlive = audioCtx.createGain();
-  keepAlive.gain.value = 0;
-  denoiseNode.connect(keepAlive);
-  keepAlive.connect(audioCtx.destination);
-
-  denoisedStream = destNode.stream;
-  console.log('[Audio] Denoised WebRTC stream ready ✓');
 }
 
 function _handleCaptureFrame(i16Frame, rms) {
@@ -1640,7 +1517,18 @@ function _handleCaptureFrame(i16Frame, rms) {
       }
     }
   }
-  // Audio transmission is handled by WebRTC — no socket emit needed
+
+  if (!currentParty && !isBroadcaster) return;
+  if (serverMutedMe) return;
+  if (settings.pushToTalk || settings.pttTouch) {
+    if (!pttActive) return;
+  } else {
+    const track = localStream?.getAudioTracks()[0];
+    if (!track?.enabled || !vadActive) return;
+  }
+
+  const outFrame = settings.noiseCancelation !== false ? denoiseFrame(i16Frame) : i16Frame;
+  socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: outFrame.buffer });
 }
 
 function int16ToFloat32(i16) {
@@ -1661,228 +1549,107 @@ let playbackCtx = null;
 function getPlaybackCtx() {
   if (!playbackCtx || playbackCtx.state === 'closed') {
     const opts = { sampleRate: DISCORD_SAMPLE_RATE, latencyHint: 'interactive' };
+    if (selectedOutputDeviceId) opts.sinkId = selectedOutputDeviceId;
     playbackCtx = new (window.AudioContext || window.webkitAudioContext)(opts);
-    if (selectedOutputDeviceId && typeof playbackCtx.setSinkId === 'function') {
-      playbackCtx.setSinkId(selectedOutputDeviceId).catch(e =>
-        console.warn('[Audio] setSinkId failed:', e));
-    }
   }
+  if (playbackCtx.state === 'suspended') playbackCtx.resume();
   return playbackCtx;
 }
 
-/* ═══ WebRTC PEER CONNECTION MANAGEMENT ═══ */
+const JITTER_MIN   = 0.020;
+const JITTER_MAX   = 0.150;
+const JITTER_ALPHA = 0.05;
 
-function getOutgoingTrack() {
-  if (denoisedStream) return denoisedStream.getAudioTracks()[0] || null;
-  if (localStream) return localStream.getAudioTracks()[0] || null;
-  return null;
-}
+socket.on('audio-from', ({ from, chunk }) => {
+  if (isDeafened || localMuted[from]) return;
 
-function createPeerConnection(remoteSid, isOfferer) {
-  if (peerConnections[remoteSid]) {
-    try { peerConnections[remoteSid].close(); } catch(e){}
-  }
+  const ctx        = getPlaybackCtx();
+  const senderRate = chunk.rate || DISCORD_SAMPLE_RATE;
+  const codec      = chunk.codec || 'pcm';
+  const audioData  = chunk.data;
 
-  const pc = new RTCPeerConnection(ICE_CONFIG);
-  peerConnections[remoteSid] = pc;
-
-  // Add our audio track
-  const track = getOutgoingTrack();
-  if (track) {
-    const stream = denoisedStream || localStream;
-    pc.addTrack(track, stream);
-
-    // Apply current mute/PTT state to outgoing track on this connection
-    const anyPTT = settings.pushToTalk || settings.pttTouch;
-    const shouldMute = isMuted || serverMutedMe || (anyPTT && !pttActive);
-    pc.getSenders().forEach(s => {
-      if (s.track && s.track.kind === 'audio') s.track.enabled = !shouldMute;
-    });
-  }
-
-  // Handle incoming audio track from remote peer
-  pc.ontrack = (event) => {
-    const remoteStream = event.streams[0] || new MediaStream([event.track]);
-    _setupPeerPlayback(remoteSid, remoteStream, event.track);
-  };
-
-  // ICE candidate handling
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit('webrtc-ice-candidate', { to: remoteSid, candidate: event.candidate });
-    }
-  };
-
-  // ICE connection state — restart on failure
-  pc.oniceconnectionstatechange = () => {
-    if (pc.iceConnectionState === 'failed') {
-      console.warn(`[WebRTC] ICE failed for ${remoteSid}, restarting…`);
-      pc.restartIce();
-      if (isOfferer) _renegotiate(remoteSid, pc);
-    } else if (pc.iceConnectionState === 'disconnected') {
-      // Give it a few seconds before considering it failed
-      setTimeout(() => {
-        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-          console.warn(`[WebRTC] Still disconnected from ${remoteSid}, restarting…`);
-          pc.restartIce();
-          if (isOfferer) _renegotiate(remoteSid, pc);
-        }
-      }, ICE_RESTART_DELAY_MS);
-    }
-  };
-
-  return pc;
-}
-
-async function _renegotiate(remoteSid, pc) {
-  try {
-    const offer = await pc.createOffer({ iceRestart: true });
-    await pc.setLocalDescription(offer);
-    socket.emit('webrtc-offer', { to: remoteSid, offer: pc.localDescription });
-  } catch(e) {
-    console.warn('[WebRTC] Renegotiation failed:', e);
-  }
-}
-
-async function _setupPeerPlayback(sid, remoteStream, track) {
-  const ctx = getPlaybackCtx();
-  if (ctx.state === 'suspended') await ctx.resume();
-
-  if (!peerPlayers[sid]) {
-    const gainNode  = ctx.createGain();
-    gainNode.gain.value = (localVolume[sid] ?? 100) / 100;
-    const analyser  = ctx.createAnalyser();
-    analyser.fftSize = 256;
+  if (!peerPlayers[from]) {
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = (localVolume[from] ?? 100) / 100;
     gainNode.connect(ctx.destination);
-    peerPlayers[sid] = { gainNode, analyser, sourceNode: null, silenceTimer: null };
+    peerPlayers[from] = {
+      gainNode,
+      nextTime:     0,
+      jitterTarget: JITTER_MIN * 2,
+      lastArrival:  0,
+      jitterEwma:   0,
+      silenceTimer: null
+    };
   }
 
-  const peer = peerPlayers[sid];
+  const peer = peerPlayers[from];
 
-  // Disconnect old source if reconnecting
-  if (peer.sourceNode) {
-    try { peer.sourceNode.disconnect(); } catch(e){}
-  }
-
-  const source = ctx.createMediaStreamSource(remoteStream);
-  source.connect(peer.analyser);
-  peer.analyser.connect(peer.gainNode);
-  peer.sourceNode = source;
-
-  // Apply local mute — disable track if locally muted
-  if (localMuted[sid]) {
-    track.enabled = false;
-  }
-
-  // Apply deafen state
-  if (isDeafened) {
-    track.enabled = false;
-  }
-
-  // Start speaking detection via analyser polling
-  _startSpeakingDetection(sid);
-}
-
-const _speakingIntervals = {};
-
-function _startSpeakingDetection(sid) {
-  if (_speakingIntervals[sid]) clearInterval(_speakingIntervals[sid]);
-
-  _speakingIntervals[sid] = setInterval(() => {
-    const peer = peerPlayers[sid];
-    if (!peer || !peer.analyser) {
-      clearInterval(_speakingIntervals[sid]);
-      delete _speakingIntervals[sid];
-      return;
+  function _scheduleBuf(buf) {
+    const now = ctx.currentTime;
+    if (peer.lastArrival > 0) {
+      const instantJitter = Math.abs((now - peer.lastArrival) - DISCORD_FRAME_MS / 1000);
+      peer.jitterEwma = peer.jitterEwma * (1 - JITTER_ALPHA) + instantJitter * JITTER_ALPHA;
+      peer.jitterTarget = Math.min(JITTER_MAX, Math.max(JITTER_MIN, peer.jitterEwma * 2));
     }
-    const data = new Uint8Array(peer.analyser.frequencyBinCount);
-    peer.analyser.getByteFrequencyData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) sum += data[i];
-    const avg = sum / data.length;
+    peer.lastArrival = now;
 
-    if (avg > SPEAKING_THRESHOLD && !localMuted[sid] && !isDeafened) {
-      showPeerSpeaking(sid, true);
-      clearTimeout(peer.silenceTimer);
-      peer.silenceTimer = setTimeout(() => showPeerSpeaking(sid, false), 350);
+    const frameDur = buf.duration;
+    const isFirst  = peer.nextTime === 0;
+    const underrun = peer.nextTime < now - frameDur * 0.5;
+    const overrun  = peer.nextTime > now + JITTER_MAX;
+
+    if (isFirst || underrun || overrun) {
+      peer.nextTime = now + peer.jitterTarget;
+    } else if (peer.nextTime < now + frameDur * 0.25) {
+      peer.nextTime += frameDur * 0.5;
     }
-  }, 100);
-}
 
-function _stopSpeakingDetection(sid) {
-  if (_speakingIntervals[sid]) {
-    clearInterval(_speakingIntervals[sid]);
-    delete _speakingIntervals[sid];
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(peer.gainNode);
+    src.start(peer.nextTime);
+    peer.nextTime += frameDur;
+
+    showPeerSpeaking(from, true);
+    clearTimeout(peer.silenceTimer);
+    peer.silenceTimer = setTimeout(() => {
+      showPeerSpeaking(from, false);
+      if (peerPlayers[from]) peerPlayers[from].nextTime = 0;
+    }, 350);
   }
-}
 
-async function connectToPeer(remoteSid) {
-  const pc = createPeerConnection(remoteSid, true);
-  try {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    socket.emit('webrtc-offer', { to: remoteSid, offer: pc.localDescription });
-  } catch(e) {
-    console.warn('[WebRTC] Failed to create offer for', remoteSid, e);
+  if (codec !== 'pcm') {
+    // Opus (or other browser-native codec): decode via AudioContext
+    ctx.decodeAudioData(audioData.slice(0)).then(decoded => {
+      _scheduleBuf(decoded);
+    }).catch(() => {}); // stale/partial frames are fine to drop
+    return;
   }
-}
 
-function disconnectFromPeer(sid) {
-  if (peerConnections[sid]) {
-    try { peerConnections[sid].close(); } catch(e){}
-    delete peerConnections[sid];
+  // PCM fallback path
+  const i16  = new Int16Array(audioData);
+  const f32  = int16ToFloat32(i16);
+
+  const numSamples = senderRate === DISCORD_SAMPLE_RATE
+    ? f32.length
+    : Math.round(f32.length * DISCORD_SAMPLE_RATE / senderRate);
+
+  const buf = ctx.createBuffer(1, numSamples, DISCORD_SAMPLE_RATE);
+
+  if (senderRate === DISCORD_SAMPLE_RATE) {
+    buf.copyToChannel(f32, 0);
+  } else {
+    const ratio = (f32.length - 1) / (numSamples - 1);
+    const ch    = buf.getChannelData(0);
+    for (let i = 0; i < numSamples; i++) {
+      const pos  = i * ratio;
+      const lo   = pos | 0;
+      const hi   = Math.min(lo + 1, f32.length - 1);
+      ch[i] = f32[lo] + (f32[hi] - f32[lo]) * (pos - lo);
+    }
   }
-  _stopSpeakingDetection(sid);
-  showPeerSpeaking(sid, false);
-}
 
-function disconnectAllPeers() {
-  Object.keys(peerConnections).forEach(disconnectFromPeer);
-}
-
-/* ═══ WebRTC SIGNALING HANDLERS ═══ */
-
-socket.on('webrtc-offer', async ({ from, offer }) => {
-  try {
-    const pc = createPeerConnection(from, false);
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    socket.emit('webrtc-answer', { to: from, answer: pc.localDescription });
-  } catch(e) {
-    console.warn('[WebRTC] Failed to handle offer from', from, e);
-  }
-});
-
-socket.on('webrtc-answer', async ({ from, answer }) => {
-  const pc = peerConnections[from];
-  if (!pc) return;
-  try {
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  } catch(e) {
-    console.warn('[WebRTC] Failed to set answer from', from, e);
-  }
-});
-
-socket.on('webrtc-ice-candidate', async ({ from, candidate }) => {
-  const pc = peerConnections[from];
-  if (!pc) return;
-  try {
-    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-  } catch(e) {
-    console.warn('[WebRTC] Failed to add ICE candidate from', from, e);
-  }
-});
-
-/* ═══ SERVER-MUTE PEER HANDLING ═══ */
-socket.on('server-mute-peer', ({ socketId, muted }) => {
-  // When a peer is server-muted, disable their incoming track
-  const pc = peerConnections[socketId];
-  if (pc) {
-    pc.getReceivers().forEach(r => {
-      if (r.track && r.track.kind === 'audio') r.track.enabled = !muted;
-    });
-  }
+  _scheduleBuf(buf);
 });
 
 function showPeerSpeaking(sid, speaking) {
@@ -1897,10 +1664,8 @@ function showPeerSpeaking(sid, speaking) {
 }
 
 function removePeerPlayer(sid) {
-  disconnectFromPeer(sid);
   if (peerPlayers[sid]) {
     try { peerPlayers[sid].gainNode.disconnect(); } catch(e){}
-    if (peerPlayers[sid].sourceNode) { try { peerPlayers[sid].sourceNode.disconnect(); } catch(e){} }
     clearTimeout(peerPlayers[sid].silenceTimer);
     delete peerPlayers[sid];
   }
@@ -1927,21 +1692,6 @@ function toggleDeafen() {
 function applyAudioState() {
   const anyPTT = settings.pushToTalk || settings.pttTouch;
   if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = !isMuted && !anyPTT);
-  // Update outgoing track on all WebRTC peer connections
-  const shouldMute = isMuted || serverMutedMe || anyPTT;
-  Object.values(peerConnections).forEach(pc => {
-    pc.getSenders().forEach(s => {
-      if (s.track && s.track.kind === 'audio') s.track.enabled = !shouldMute;
-    });
-  });
-  // Update deafen state on incoming tracks
-  Object.entries(peerConnections).forEach(([sid, pc]) => {
-    pc.getReceivers().forEach(r => {
-      if (r.track && r.track.kind === 'audio') {
-        r.track.enabled = !isDeafened && !localMuted[sid];
-      }
-    });
-  });
   document.getElementById('icon-mute').innerHTML    = isMuted    ? SVG_MIC_OFF : SVG_MIC_ON;
   document.getElementById('label-mute').textContent = isMuted    ? (isDeafened ? 'Muted' : 'Unmute') : 'Mute';
   document.getElementById('btn-mute').classList.toggle('active-red', isMuted && !anyPTT);
@@ -1982,19 +1732,9 @@ socket.on('server-muted', ({ muted, by }) => {
   serverMutedMe = muted;
   if (muted) {
     if (localStream) localStream.getAudioTracks().forEach(t => t.enabled = false);
-    // Disable outgoing track on all WebRTC peer connections
-    Object.values(peerConnections).forEach(pc => {
-      pc.getSenders().forEach(s => { if (s.track && s.track.kind === 'audio') s.track.enabled = false; });
-    });
     notify(`🔕 You have been server muted by ${by}`, 'warn');
   } else {
     if (localStream && !isMuted && !settings.pushToTalk && !settings.pttTouch) localStream.getAudioTracks().forEach(t => t.enabled = true);
-    // Re-enable outgoing track if not locally muted
-    if (!isMuted && !settings.pushToTalk && !settings.pttTouch) {
-      Object.values(peerConnections).forEach(pc => {
-        pc.getSenders().forEach(s => { if (s.track && s.track.kind === 'audio') s.track.enabled = true; });
-      });
-    }
     notify(`🔊 Server mute removed by ${by}`, 'success');
   }
   updateMyCard();
@@ -2157,37 +1897,9 @@ function startBroadcast() {
   document.getElementById('broadcaster-toggle').classList.add('active-red');
   socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: false });
 
-  // Establish WebRTC connections to all peers in targeted parties
-  _reconcileBroadcasterConnections();
-
   const label = bcTargets === 'all' ? 'all parties' : `Party ${[...bcPartySelected].sort((a,b)=>a-b).join(', ')}`;
   notify(`🔴 Broadcasting to ${label}`, 'success');
   updateBcPauseBtn();
-}
-
-function _reconcileBroadcasterConnections() {
-  if (!isBroadcaster) return;
-  const targetParties = bcTargets === 'all'
-    ? Object.keys(partyData).map(Number)
-    : (Array.isArray(bcTargets) ? bcTargets : []);
-
-  const neededPeers = new Set();
-  targetParties.forEach(pid => {
-    (partyData[pid] || []).forEach(m => {
-      if (m.socketId !== socket.id) neededPeers.add(m.socketId);
-    });
-  });
-  // Also keep connections to peers in our own party
-  if (currentParty) {
-    (partyData[currentParty] || []).forEach(m => {
-      if (m.socketId !== socket.id) neededPeers.add(m.socketId);
-    });
-  }
-
-  // Connect to peers we need but don't have
-  neededPeers.forEach(sid => {
-    if (!peerConnections[sid]) connectToPeer(sid);
-  });
 }
 
 function stopBroadcast() {
@@ -2195,11 +1907,6 @@ function stopBroadcast() {
   bcPaused = false;
   document.getElementById('broadcaster-toggle').classList.remove('active-red', 'active-paused');
   socket.emit('set-broadcaster', { isBroadcaster: false });
-  // Disconnect WebRTC connections to peers not in our party
-  const partyMembers = new Set((partyData[currentParty] || []).map(m => m.socketId));
-  Object.keys(peerConnections).forEach(sid => {
-    if (!partyMembers.has(sid)) disconnectFromPeer(sid);
-  });
   notify('Broadcasting stopped');
   updateBcPauseBtn();
 }
@@ -2208,12 +1915,6 @@ function onBroadcastPauseToggle() {
   if (!isBroadcaster) return;
   bcPaused = !bcPaused;
   socket.emit('set-broadcast-paused', { paused: bcPaused });
-  // Enable/disable outgoing audio track on all peer connections
-  Object.values(peerConnections).forEach(pc => {
-    pc.getSenders().forEach(s => {
-      if (s.track && s.track.kind === 'audio') s.track.enabled = !bcPaused && !isMuted && !serverMutedMe;
-    });
-  });
   const pill = document.getElementById('broadcaster-toggle');
   if (bcPaused) {
     pill.classList.remove('active-red'); pill.classList.add('active-paused');
@@ -2316,13 +2017,6 @@ function toggleLocalMute() {
   if (!popoverTarget) return;
   localMuted[popoverTarget] = !localMuted[popoverTarget];
   const muted = localMuted[popoverTarget];
-  // Disable/enable the incoming WebRTC track from this peer
-  const pc = peerConnections[popoverTarget];
-  if (pc) {
-    pc.getReceivers().forEach(r => {
-      if (r.track && r.track.kind === 'audio') r.track.enabled = !muted && !isDeafened;
-    });
-  }
   document.getElementById('pop-mute-icon').textContent  = muted ? '🔊' : '🔇';
   document.getElementById('pop-mute-label').textContent = muted ? 'Unmute for me' : 'Mute for me';
   document.getElementById('pop-mute-btn').classList.toggle('is-active', muted);
@@ -2551,7 +2245,6 @@ function memberCardHTML(m, isMe) {
 
 function joinParty(partyId) {
   if (currentParty === partyId) return;
-  disconnectAllPeers();
   Object.keys(peerPlayers).forEach(removePeerPlayer);
   currentParty = partyId;
   socket.emit('join-party', { partyId });
@@ -2562,7 +2255,6 @@ function joinParty(partyId) {
 
 function leaveParty() {
   if (!currentParty) return;
-  disconnectAllPeers();
   Object.keys(peerPlayers).forEach(removePeerPlayer);
   socket.emit('leave-party');
   playSound('leave');
@@ -2575,8 +2267,6 @@ function leaveParty() {
 socket.on('connect', () => {
   document.getElementById('status-dot').className    = 'status-dot connected';
   document.getElementById('status-text').textContent = 'Connected';
-  // Tear down all existing peer connections (stale after reconnect)
-  disconnectAllPeers();
   if (myUsername) {
     socket.emit('join', { username: myUsername });
     if (currentParty) socket.emit('join-party', { partyId: currentParty });
@@ -2594,8 +2284,6 @@ socket.on('connect', () => {
 socket.on('disconnect', () => {
   document.getElementById('status-dot').className   = 'status-dot disconnected';
   document.getElementById('status-text').textContent = 'Disconnected…';
-  // Clean up WebRTC connections on disconnect
-  disconnectAllPeers();
 });
 
 socket.on('init', ({ partyList }) => {
@@ -2609,46 +2297,17 @@ socket.on('party-update', (partyList) => {
   Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
   renderSidebar();
   if (currentParty) renderMainPanel();
-  // Reconcile broadcaster connections when party membership changes
-  if (isBroadcaster) _reconcileBroadcasterConnections();
 });
 
-socket.on('party-peers', ({ peers }) => {
-  // When we join a party, we receive the list of existing peers — we send offers to each
-  renderMainPanel();
-  if (peers && Array.isArray(peers)) {
-    peers.forEach(p => {
-      if (p.socketId !== socket.id && !peerConnections[p.socketId]) {
-        connectToPeer(p.socketId);
-      }
-    });
-  }
-});
-socket.on('peer-joined', () => {
-  // A new peer joined our party — they will send us offers via party-peers
-  playSound('join');
-  renderMainPanel();
-});
+socket.on('party-peers',      () => renderMainPanel());
+socket.on('peer-joined',      () => { playSound('join'); renderMainPanel(); });
 socket.on('peer-left', ({ socketId }) => { delete peerLatency[socketId]; removePeerPlayer(socketId); playSound('leave'); renderMainPanel(); });
-socket.on('broadcaster-left', ({ socketId }) => {
-  // Clean up WebRTC connection to the departing broadcaster
-  if (socketId && socketId !== socket.id) {
-    removePeerPlayer(socketId);
-  }
-  renderMainPanel();
-});
-socket.on('broadcaster-paused', ({ socketId, paused }) => {
-  // When broadcaster pauses, disable their outgoing track (they handle this themselves)
-  renderMainPanel();
-});
+socket.on('broadcaster-left', () => renderMainPanel());
+socket.on('broadcaster-paused', ({ socketId, paused }) => renderMainPanel());
 socket.on('broadcaster-joined', ({ socketId, username }) => {
   if (socketId === socket.id) return;
   notify(`📡 ${username} is now broadcasting`);
   renderMainPanel();
-  // Establish WebRTC connection to the broadcaster if we don't have one
-  if (!peerConnections[socketId]) {
-    connectToPeer(socketId);
-  }
 });
 
 // ── Latency measurement ──
@@ -2866,11 +2525,9 @@ function logout() {
   if (!confirm('Sign out of OathlyVoice?')) return;
   if (currentParty) socket.emit('leave-party');
   if (isBroadcaster) { isBroadcaster = false; socket.emit('set-broadcaster', { isBroadcaster: false }); }
-  disconnectAllPeers();
   if (micVAD) { try { micVAD.destroy(); } catch(e){} micVAD = null; }
   if (processorNode?.port) { try { processorNode.port.postMessage('stop'); } catch(e){} }
   if (localStream) localStream.getTracks().forEach(t => t.stop());
-  if (denoisedStream) denoisedStream.getTracks().forEach(t => t.stop());
   if (audioCtx)    { try { audioCtx.close(); }    catch(e){} audioCtx    = null; }
   if (playbackCtx) { try { playbackCtx.close(); } catch(e){} playbackCtx = null; }
   Object.keys(peerPlayers).forEach(removePeerPlayer);
@@ -2879,11 +2536,6 @@ function logout() {
 }
 
 document.addEventListener('touchstart', () => {
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
-}, { passive: true });
-
-document.addEventListener('click', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
 }, { passive: true });
