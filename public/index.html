@@ -1518,6 +1518,22 @@ async function buildAudioPipeline() {
   // ── Build denoised MediaStream for WebRTC ──
   await _buildDenoisedStream();
 
+  // After rebuilding the denoised stream, replace the track on all existing peer senders
+  // so they don't hold a reference to an ended track from a previous build.
+  const newTrack = getOutgoingTrack();
+  if (newTrack) {
+    for (const sid of Object.keys(peerConnections)) {
+      const pc = peerConnections[sid];
+      if (!pc) continue;
+      for (const sender of pc.getSenders()) {
+        if (sender.track && sender.track.kind === 'audio') {
+          sender.replaceTrack(newTrack).catch(e =>
+            console.warn('[WebRTC] replaceTrack failed for', sid, e));
+        }
+      }
+    }
+  }
+
   if (settings.pushToTalk || settings.pttTouch) {
     localStream.getAudioTracks().forEach(t => t.enabled = false);
     if (denoisedStream) denoisedStream.getAudioTracks().forEach(t => t.enabled = false);
@@ -1587,6 +1603,14 @@ async function _buildDenoisedStream() {
   const destNode = audioCtx.createMediaStreamDestination();
   inputGainNode.connect(denoiseNode);
   denoiseNode.connect(destNode);
+
+  // ScriptProcessor requires a live path to audioCtx.destination to keep processing.
+  // Route through a zero-gain node so no audible output leaks but the graph stays alive.
+  const keepAlive = audioCtx.createGain();
+  keepAlive.gain.value = 0;
+  denoiseNode.connect(keepAlive);
+  keepAlive.connect(audioCtx.destination);
+
   denoisedStream = destNode.stream;
   console.log('[Audio] Denoised WebRTC stream ready ✓');
 }
@@ -1637,10 +1661,12 @@ let playbackCtx = null;
 function getPlaybackCtx() {
   if (!playbackCtx || playbackCtx.state === 'closed') {
     const opts = { sampleRate: DISCORD_SAMPLE_RATE, latencyHint: 'interactive' };
-    if (selectedOutputDeviceId) opts.sinkId = selectedOutputDeviceId;
     playbackCtx = new (window.AudioContext || window.webkitAudioContext)(opts);
+    if (selectedOutputDeviceId && typeof playbackCtx.setSinkId === 'function') {
+      playbackCtx.setSinkId(selectedOutputDeviceId).catch(e =>
+        console.warn('[Audio] setSinkId failed:', e));
+    }
   }
-  if (playbackCtx.state === 'suspended') playbackCtx.resume();
   return playbackCtx;
 }
 
@@ -1718,8 +1744,9 @@ async function _renegotiate(remoteSid, pc) {
   }
 }
 
-function _setupPeerPlayback(sid, remoteStream, track) {
+async function _setupPeerPlayback(sid, remoteStream, track) {
   const ctx = getPlaybackCtx();
+  if (ctx.state === 'suspended') await ctx.resume();
 
   if (!peerPlayers[sid]) {
     const gainNode  = ctx.createGain();
@@ -2852,6 +2879,11 @@ function logout() {
 }
 
 document.addEventListener('touchstart', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
+}, { passive: true });
+
+document.addEventListener('click', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
 }, { passive: true });
