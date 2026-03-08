@@ -1948,6 +1948,7 @@ socket.on('role-admin-revoked', () => {
 function updateRoleBadge() {
   const badgeAdmin = document.getElementById('badge-admin');
   const badgeOwner = document.getElementById('badge-owner');
+  if (!badgeAdmin || !badgeOwner) return;
   if (myRole === 'owner') {
     badgeAdmin.classList.add('hidden');
     badgeOwner.classList.remove('hidden');

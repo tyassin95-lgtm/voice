@@ -184,12 +184,12 @@ io.on('connection', (socket) => {
     cb({ ok: true, isOwner: true });
   });
 
-  // ── Deprecated: kept for backward compatibility but no longer toggles admin ──
+  // ── Deprecated: kept for backwards compatibility but no longer toggles admin ──
   socket.on('revoke-admin', () => {
     // No-op: admin privileges are now managed only through the owner panel
   });
 
-  // ── Deprecated: kept for backward compatibility but no longer toggles admin ──
+  // ── Deprecated: kept for backwards compatibility but no longer toggles admin ──
   socket.on('claim-role-admin', () => {
     // No-op: admin privileges are now determined by stored role on join
   });
