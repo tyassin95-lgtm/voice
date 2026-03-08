@@ -117,6 +117,11 @@
   .chip-avatar{width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0}
   .chip-name{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px}
 
+  .role-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;letter-spacing:0.02em;pointer-events:none;user-select:none}
+  .role-badge-admin{background:rgba(254,231,92,0.15);color:#d4a017}
+  .role-badge-owner{background:rgba(88,101,242,0.15);color:var(--accent2)}
+  .role-badge.hidden{display:none}
+
   /* ═══ SIDEBAR ═══ */
   .sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--panel);overflow-y:auto;overflow-x:hidden;padding:0 0 calc(var(--bottom-h)+16px);z-index:40;transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
   #party-list{display:flex;flex-direction:column;min-height:min-content;padding-top:4px;padding-bottom:8px}
@@ -563,7 +568,7 @@
       <div class="modal-title">⚡ Owner Access</div>
       <button onclick="closeAdminModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
     </div>
-    <div class="modal-sub">Enter the owner code to gain admin powers and manage roles</div>
+    <div class="modal-sub">Enter the owner code to open the Admin Management panel</div>
     <div class="field"><label>Owner Code</label><input type="password" id="admin-pass-input" placeholder="Owner code"/></div>
     <div class="modal-err" id="admin-err"></div>
     <button class="btn-primary" onclick="submitAdminPassword()">Unlock</button>
@@ -631,12 +636,14 @@
     <div class="header-sep"></div>
     <div class="header-pill" id="admin-toggle" onclick="onAdminClick()">
       <div class="pill-dot"></div>
-      <span class="bc-label">Admin</span>
+      <span class="bc-label">Owner Login</span>
     </div>
     <div class="header-pill" id="broadcaster-toggle" onclick="toggleBroadcaster()" style="display:none">
       <div class="pill-dot"></div>
       <span class="bc-label">Broadcast</span>
     </div>
+    <span class="role-badge role-badge-admin hidden" id="badge-admin">Admin</span>
+    <span class="role-badge role-badge-owner hidden" id="badge-owner">Owner</span>
     <div class="user-chip" onclick="openSettings()">
       <div class="chip-avatar" id="header-avatar"></div>
       <div class="chip-name" id="header-username"></div>
@@ -1918,8 +1925,8 @@ socket.on('admin-moved', ({ by, toPartyId }) => {
 socket.on('role-admin-granted', ({ role }) => {
   myRole  = role;
   isAdmin = true;
-  document.getElementById('admin-toggle').classList.add('active-yellow');
   document.getElementById('broadcaster-toggle').style.display = '';
+  updateRoleBadge();
   notify('⚡ Admin powers activated (role: ' + role + ')', 'success');
   renderMainPanel();
 });
@@ -1927,8 +1934,8 @@ socket.on('role-admin-granted', ({ role }) => {
 socket.on('role-admin-revoked', () => {
   myRole  = 'user';
   isAdmin = false;
-  document.getElementById('admin-toggle').classList.remove('active-yellow');
   document.getElementById('broadcaster-toggle').style.display = 'none';
+  updateRoleBadge();
   if (isBroadcaster) {
     isBroadcaster = false;
     document.getElementById('broadcaster-toggle').classList.remove('active-red');
@@ -1938,29 +1945,25 @@ socket.on('role-admin-revoked', () => {
   renderMainPanel();
 });
 
-function onAdminClick() {
-  if (isAdmin) {
-    isAdmin = false;
-    socket.emit('revoke-admin');
-    document.getElementById('admin-toggle').classList.remove('active-yellow');
-    document.getElementById('broadcaster-toggle').style.display = 'none';
-    if (isBroadcaster) {
-      isBroadcaster = false;
-      document.getElementById('broadcaster-toggle').classList.remove('active-red');
-      socket.emit('set-broadcaster', { isBroadcaster: false });
-    }
-    notify('Admin powers revoked');
-  } else if (myRole === 'admin' || myRole === 'owner') {
-    // Role-based admin: re-activate without password
-    isAdmin = true;
-    socket.emit('claim-role-admin');
-    document.getElementById('admin-toggle').classList.add('active-yellow');
-    document.getElementById('broadcaster-toggle').style.display = '';
-    notify('⚡ Admin powers activated', 'success');
-    renderMainPanel();
+function updateRoleBadge() {
+  const badgeAdmin = document.getElementById('badge-admin');
+  const badgeOwner = document.getElementById('badge-owner');
+  if (!badgeAdmin || !badgeOwner) return;
+  if (myRole === 'owner') {
+    badgeAdmin.classList.add('hidden');
+    badgeOwner.classList.remove('hidden');
+  } else if (myRole === 'admin') {
+    badgeAdmin.classList.remove('hidden');
+    badgeOwner.classList.add('hidden');
   } else {
-    openAdminModal();
+    badgeAdmin.classList.add('hidden');
+    badgeOwner.classList.add('hidden');
   }
+}
+
+function onAdminClick() {
+  // Always open the owner authentication modal
+  openAdminModal();
 }
 
 function openAdminModal() {
@@ -1985,17 +1988,10 @@ function submitAdminPassword() {
       document.getElementById('admin-err').textContent = res.error || 'Wrong password';
       return;
     }
-    isAdmin = true;
     closeAdminModal();
-    document.getElementById('admin-toggle').classList.add('active-yellow');
-    document.getElementById('broadcaster-toggle').style.display = '';
-    notify('⚡ Admin powers activated', 'success');
-    renderMainPanel();
     // Owner code was correct — open admin management panel
-    if (res.isOwner) {
-      ownerCode = pw;
-      openAdminManagement();
-    }
+    ownerCode = pw;
+    openAdminManagement();
   });
 }
 
@@ -2562,7 +2558,6 @@ socket.on('connect', () => {
       // On reconnect, role-based admins will get auto-granted via 'join' handler
       if (myRole !== 'admin' && myRole !== 'owner') {
         isAdmin = false;
-        document.getElementById('admin-toggle').classList.remove('active-yellow');
         document.getElementById('broadcaster-toggle').style.display = 'none';
         notify('Reconnected — re-enter owner code if needed', 'warn');
       }
