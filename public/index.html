@@ -236,6 +236,27 @@
   .popover-btn.is-active:hover{background:rgba(237,66,69,0.18)}
   .popover-divider{border:none;border-top:1px solid var(--border);margin:6px 0}
 
+  /* ═══ ADMIN MANAGEMENT LIST ═══ */
+  .mgmt-user-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--nav-bg);scrollbar-width:thin;scrollbar-color:var(--nav-bg) transparent}
+  .mgmt-user-list::-webkit-scrollbar{width:6px}
+  .mgmt-user-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .mgmt-user-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);transition:background 0.1s}
+  .mgmt-user-row:last-child{border-bottom:none}
+  .mgmt-user-row:hover{background:rgba(255,255,255,0.03)}
+  .mgmt-user-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#fff;flex-shrink:0}
+  .mgmt-user-info{flex:1;min-width:0}
+  .mgmt-user-name{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mgmt-role-badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:3px;letter-spacing:0.04em}
+  .mgmt-role-badge.role-user{background:rgba(148,155,164,0.15);color:var(--text-3)}
+  .mgmt-role-badge.role-admin{background:rgba(254,231,92,0.15);color:#d4a017}
+  .mgmt-role-badge.role-owner{background:rgba(88,101,242,0.15);color:var(--accent2)}
+  .mgmt-btn{padding:4px 10px;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+  .mgmt-btn-grant{background:rgba(59,165,93,0.15);color:var(--green)}
+  .mgmt-btn-grant:hover{background:rgba(59,165,93,0.3)}
+  .mgmt-btn-revoke{background:rgba(237,66,69,0.15);color:var(--red)}
+  .mgmt-btn-revoke:hover{background:rgba(237,66,69,0.3)}
+  .mgmt-empty{padding:24px;text-align:center;color:var(--text-3);font-size:13px}
+
   /* ═══ PTT TOUCH BUTTON (mobile) ═══ */
   #ptt-touch-btn {
     display: none;
@@ -539,14 +560,32 @@
 <div class="modal-overlay hidden" id="admin-modal">
   <div class="modal">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div class="modal-title">⚡ Admin Access</div>
+      <div class="modal-title">⚡ Owner Access</div>
       <button onclick="closeAdminModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
     </div>
-    <div class="modal-sub">Enter the admin password to gain moderation powers</div>
-    <div class="field"><label>Password</label><input type="password" id="admin-pass-input" placeholder="Admin password"/></div>
+    <div class="modal-sub">Enter the owner code to gain admin powers and manage roles</div>
+    <div class="field"><label>Owner Code</label><input type="password" id="admin-pass-input" placeholder="Owner code"/></div>
     <div class="modal-err" id="admin-err"></div>
-    <button class="btn-primary" onclick="submitAdminPassword()">Unlock Admin</button>
+    <button class="btn-primary" onclick="submitAdminPassword()">Unlock</button>
     <button class="btn-ghost" onclick="closeAdminModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ ADMIN MANAGEMENT MODAL ═══ -->
+<div class="modal-overlay hidden" id="admin-mgmt-modal">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">🛡️ Admin Management</div>
+      <button onclick="closeAdminManagement()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="modal-sub">Manage admin privileges for registered accounts</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Search Users</label>
+      <input type="text" id="mgmt-search" placeholder="Search by username…" oninput="onMgmtSearch()"/>
+    </div>
+    <div id="mgmt-user-list" class="mgmt-user-list"></div>
+    <div class="modal-err" id="mgmt-err" style="margin-top:8px"></div>
+    <button class="btn-ghost" onclick="closeAdminManagement()" style="margin-top:12px">Close</button>
   </div>
 </div>
 
@@ -686,6 +725,8 @@ let isBroadcaster = false;
 let isMuted       = false;
 let isDeafened    = false;
 let isAdmin       = false;
+let myRole        = 'user'; // 'user', 'admin', or 'owner'
+let ownerCode     = '';     // stored when owner code is verified
 let serverMutedMe = false;
 let localStream   = null;
 let partyData     = {};
@@ -771,6 +812,7 @@ async function doLogin() {
     myUsername = data.username;
     myPassword = password;
     isGuest    = false;
+    myRole     = data.role || 'user';
     applySettings(data.settings);
     enterApp();
   } catch (e) {
@@ -1872,6 +1914,30 @@ socket.on('admin-moved', ({ by, toPartyId }) => {
   renderMainPanel();
 });
 
+// ── Role-based admin events ──
+socket.on('role-admin-granted', ({ role }) => {
+  myRole  = role;
+  isAdmin = true;
+  document.getElementById('admin-toggle').classList.add('active-yellow');
+  document.getElementById('broadcaster-toggle').style.display = '';
+  notify('⚡ Admin powers activated (role: ' + role + ')', 'success');
+  renderMainPanel();
+});
+
+socket.on('role-admin-revoked', () => {
+  myRole  = 'user';
+  isAdmin = false;
+  document.getElementById('admin-toggle').classList.remove('active-yellow');
+  document.getElementById('broadcaster-toggle').style.display = 'none';
+  if (isBroadcaster) {
+    isBroadcaster = false;
+    document.getElementById('broadcaster-toggle').classList.remove('active-red');
+    socket.emit('set-broadcaster', { isBroadcaster: false });
+  }
+  notify('Admin privileges have been revoked by the owner', 'warn');
+  renderMainPanel();
+});
+
 function onAdminClick() {
   if (isAdmin) {
     isAdmin = false;
@@ -1884,6 +1950,14 @@ function onAdminClick() {
       socket.emit('set-broadcaster', { isBroadcaster: false });
     }
     notify('Admin powers revoked');
+  } else if (myRole === 'admin' || myRole === 'owner') {
+    // Role-based admin: re-activate without password
+    isAdmin = true;
+    socket.emit('claim-role-admin');
+    document.getElementById('admin-toggle').classList.add('active-yellow');
+    document.getElementById('broadcaster-toggle').style.display = '';
+    notify('⚡ Admin powers activated', 'success');
+    renderMainPanel();
   } else {
     openAdminModal();
   }
@@ -1917,6 +1991,11 @@ function submitAdminPassword() {
     document.getElementById('broadcaster-toggle').style.display = '';
     notify('⚡ Admin powers activated', 'success');
     renderMainPanel();
+    // Owner code was correct — open admin management panel
+    if (res.isOwner) {
+      ownerCode = pw;
+      openAdminManagement();
+    }
   });
 }
 
@@ -1934,6 +2013,86 @@ function adminKick() {
   if (!confirm(`Disconnect ${member?.username}?`)) return;
   socket.emit('admin-disconnect', { targetId: popoverTarget });
   closePopover();
+}
+
+// ── Admin Management (owner only) ──
+let mgmtSearchTimeout = null;
+
+function openAdminManagement() {
+  document.getElementById('admin-mgmt-modal').classList.remove('hidden');
+  document.getElementById('mgmt-search').value = '';
+  document.getElementById('mgmt-err').textContent = '';
+  doMgmtSearch('');
+  setTimeout(() => document.getElementById('mgmt-search').focus(), 100);
+}
+
+function closeAdminManagement() {
+  document.getElementById('admin-mgmt-modal').classList.add('hidden');
+}
+
+function onMgmtSearch() {
+  clearTimeout(mgmtSearchTimeout);
+  mgmtSearchTimeout = setTimeout(() => {
+    doMgmtSearch(document.getElementById('mgmt-search').value.trim());
+  }, 250);
+}
+
+function doMgmtSearch(query) {
+  const listEl = document.getElementById('mgmt-user-list');
+  listEl.innerHTML = '<div class="mgmt-empty">Searching…</div>';
+  socket.emit('owner-search-users', { query, ownerCode }, (res) => {
+    if (!res.ok) {
+      listEl.innerHTML = '<div class="mgmt-empty">Error: ' + esc(res.error || 'Unknown error') + '</div>';
+      return;
+    }
+    if (!res.users.length) {
+      listEl.innerHTML = '<div class="mgmt-empty">No users found</div>';
+      return;
+    }
+    listEl.innerHTML = res.users.map(u => {
+      const roleCls = 'role-' + (u.role || 'user');
+      const isOwnerRole = u.role === 'owner';
+      const isAdminRole = u.role === 'admin';
+      let actionBtn = '';
+      if (isOwnerRole) {
+        actionBtn = '<span style="font-size:11px;color:var(--text-3);white-space:nowrap">Owner</span>';
+      } else if (isAdminRole) {
+        actionBtn = '<button class="mgmt-btn mgmt-btn-revoke" onclick="mgmtRevokeAdmin(\'' + esc(u.username).replace(/'/g, "\\'") + '\')">Revoke Admin</button>';
+      } else {
+        actionBtn = '<button class="mgmt-btn mgmt-btn-grant" onclick="mgmtGrantAdmin(\'' + esc(u.username).replace(/'/g, "\\'") + '\')">Grant Admin</button>';
+      }
+      return '<div class="mgmt-user-row">' +
+        '<div class="mgmt-user-avatar">' + esc(u.username[0].toUpperCase()) + '</div>' +
+        '<div class="mgmt-user-info"><div class="mgmt-user-name">' + esc(u.username) + '</div></div>' +
+        '<span class="mgmt-role-badge ' + roleCls + '">' + esc(u.role || 'user') + '</span>' +
+        actionBtn +
+      '</div>';
+    }).join('');
+  });
+}
+
+function mgmtGrantAdmin(username) {
+  document.getElementById('mgmt-err').textContent = '';
+  socket.emit('owner-grant-admin', { targetUsername: username, ownerCode }, (res) => {
+    if (!res.ok) {
+      document.getElementById('mgmt-err').textContent = res.error || 'Failed';
+      return;
+    }
+    notify('Granted admin to ' + username, 'success');
+    doMgmtSearch(document.getElementById('mgmt-search').value.trim());
+  });
+}
+
+function mgmtRevokeAdmin(username) {
+  document.getElementById('mgmt-err').textContent = '';
+  socket.emit('owner-revoke-admin', { targetUsername: username, ownerCode }, (res) => {
+    if (!res.ok) {
+      document.getElementById('mgmt-err').textContent = res.error || 'Failed';
+      return;
+    }
+    notify('Revoked admin from ' + username, 'success');
+    doMgmtSearch(document.getElementById('mgmt-search').value.trim());
+  });
 }
 
 let bcTargets      = 'all';
@@ -2391,10 +2550,13 @@ socket.on('connect', () => {
     if (currentParty) socket.emit('join-party', { partyId: currentParty });
     if (isBroadcaster) socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
     if (isAdmin) {
-      isAdmin = false;
-      document.getElementById('admin-toggle').classList.remove('active-yellow');
-      document.getElementById('broadcaster-toggle').style.display = 'none';
-      notify('Reconnected — re-enter admin password if needed', 'warn');
+      // On reconnect, role-based admins will get auto-granted via 'join' handler
+      if (myRole !== 'admin' && myRole !== 'owner') {
+        isAdmin = false;
+        document.getElementById('admin-toggle').classList.remove('active-yellow');
+        document.getElementById('broadcaster-toggle').style.display = 'none';
+        notify('Reconnected — re-enter owner code if needed', 'warn');
+      }
     }
     if (isMuted)    socket.emit('set-self-muted',    { muted: true });
     if (isDeafened) socket.emit('set-self-deafened', { deafened: true });
