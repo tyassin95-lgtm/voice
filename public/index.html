@@ -727,6 +727,13 @@ const localMuted  = {};
 const localVolume = {};
 let popoverTarget = null;
 
+const useWebCodecs = typeof AudioEncoder !== 'undefined' && typeof AudioDecoder !== 'undefined';
+let opusEncoder      = null;
+let seqCounter       = 0;
+let encoderTimestamp  = 0;
+const peerDecoders   = {};
+const peerLastSeq    = {};
+
 /* ═══ SVG ICON DEFINITIONS ═══ */
 const SVG_MIC_ON   = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V21c0 .55.45 1 1 1s1-.45 1-1v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>';
 const SVG_MIC_OFF  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>';
@@ -1490,6 +1497,38 @@ async function buildAudioPipeline() {
 
   if (settings.pushToTalk || settings.pttTouch) localStream.getAudioTracks().forEach(t => t.enabled = false);
   updatePTTButton();
+
+  // Initialize Opus encoder if WebCodecs is supported
+  if (useWebCodecs && !opusEncoder) {
+    try {
+      opusEncoder = new AudioEncoder({
+        output: (chunk, metadata) => {
+          const buf = new ArrayBuffer(chunk.byteLength);
+          chunk.copyTo(buf);
+          socket.volatile.emit('audio-chunk', {
+            rate: 48000,
+            codec: 'opus',
+            data: buf,
+            seq: seqCounter++
+          });
+        },
+        error: (e) => {
+          console.warn('[Opus] Encoder error:', e);
+          opusEncoder = null;
+        }
+      });
+      opusEncoder.configure({
+        codec: 'opus',
+        sampleRate: 48000,
+        numberOfChannels: 1,
+        bitrate: 24000
+      });
+      console.log('[Opus] Encoder initialized ✓');
+    } catch (e) {
+      console.warn('[Opus] Could not initialize encoder, falling back to PCM:', e);
+      opusEncoder = null;
+    }
+  }
 }
 
 function _handleCaptureFrame(i16Frame, rms) {
@@ -1528,7 +1567,23 @@ function _handleCaptureFrame(i16Frame, rms) {
   }
 
   const outFrame = settings.noiseCancelation !== false ? denoiseFrame(i16Frame) : i16Frame;
-  socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: outFrame.buffer });
+  if (useWebCodecs && opusEncoder && opusEncoder.state === 'configured') {
+    const f32 = new Float32Array(outFrame.length);
+    for (let i = 0; i < outFrame.length; i++) f32[i] = outFrame[i] / (outFrame[i] < 0 ? 0x8000 : 0x7FFF);
+    const ad = new AudioData({
+      format: 'f32-planar',
+      sampleRate: 48000,
+      numberOfFrames: outFrame.length,
+      numberOfChannels: 1,
+      timestamp: encoderTimestamp,
+      data: f32
+    });
+    encoderTimestamp += DISCORD_FRAME_MS * 1000;
+    opusEncoder.encode(ad);
+    ad.close();
+  } else {
+    socket.volatile.emit('audio-chunk', { rate: SAMPLE_RATE, codec: 'pcm', data: outFrame.buffer, seq: seqCounter++ });
+  }
 }
 
 function int16ToFloat32(i16) {
@@ -1567,6 +1622,7 @@ socket.on('audio-from', ({ from, chunk }) => {
   const senderRate = chunk.rate || DISCORD_SAMPLE_RATE;
   const codec      = chunk.codec || 'pcm';
   const audioData  = chunk.data;
+  const seq        = chunk.seq;
 
   if (!peerPlayers[from]) {
     const gainNode = ctx.createGain();
@@ -1618,8 +1674,66 @@ socket.on('audio-from', ({ from, chunk }) => {
     }, 350);
   }
 
+  // ── Sequence number tracking & packet loss concealment ──
+  if (seq != null) {
+    if (!(from in peerLastSeq)) peerLastSeq[from] = -1;
+    if (seq <= peerLastSeq[from]) return;
+    const gap = seq - peerLastSeq[from] - 1;
+    if (gap > 0) {
+      const silentCount = Math.min(gap, 3);
+      for (let s = 0; s < silentCount; s++) {
+        const silentBuf = ctx.createBuffer(1, DISCORD_FRAME_SIZE, DISCORD_SAMPLE_RATE);
+        _scheduleBuf(silentBuf);
+      }
+    }
+    peerLastSeq[from] = seq;
+  }
+
   if (codec !== 'pcm') {
-    // Opus (or other browser-native codec): decode via AudioContext
+    // ── Opus decoding via WebCodecs AudioDecoder ──
+    if (codec === 'opus' && useWebCodecs) {
+      if (!peerDecoders[from]) {
+        try {
+          const decoder = new AudioDecoder({
+            output: (decodedData) => {
+              const numFrames = decodedData.numberOfFrames;
+              const buf = ctx.createBuffer(1, numFrames, decodedData.sampleRate);
+              const f32 = new Float32Array(numFrames);
+              decodedData.copyTo(f32, { planeIndex: 0 });
+              buf.copyToChannel(f32, 0);
+              decodedData.close();
+              _scheduleBuf(buf);
+            },
+            error: (e) => {
+              console.warn('[Opus] Decoder error for', from, ':', e);
+              try { peerDecoders[from]?.close(); } catch(ex) { console.warn('[Opus] Decoder close failed:', ex); }
+              delete peerDecoders[from];
+            }
+          });
+          decoder.configure({
+            codec: 'opus',
+            sampleRate: 48000,
+            numberOfChannels: 1
+          });
+          peerDecoders[from] = decoder;
+        } catch (e) {
+          console.warn('[Opus] Could not create decoder for', from, ':', e);
+        }
+      }
+      if (peerDecoders[from] && peerDecoders[from].state !== 'closed') {
+        try {
+          const encodedChunk = new EncodedAudioChunk({
+            type: 'key',
+            timestamp: (seq || 0) * DISCORD_FRAME_MS * 1000,
+            data: audioData
+          });
+          peerDecoders[from].decode(encodedChunk);
+        } catch (e) { /* decode error — stale/partial frame dropped, same as decodeAudioData .catch */ }
+        return;
+      }
+    }
+
+    // Fallback for non-PCM codecs without WebCodecs decoder
     ctx.decodeAudioData(audioData.slice(0)).then(decoded => {
       _scheduleBuf(decoded);
     }).catch(() => {}); // stale/partial frames are fine to drop
@@ -1669,6 +1783,11 @@ function removePeerPlayer(sid) {
     clearTimeout(peerPlayers[sid].silenceTimer);
     delete peerPlayers[sid];
   }
+  if (peerDecoders[sid]) {
+    try { peerDecoders[sid].close(); } catch(e){ console.warn('[Opus] Decoder cleanup failed:', e); }
+    delete peerDecoders[sid];
+  }
+  delete peerLastSeq[sid];
 }
 
 function toggleMute() {
