@@ -175,35 +175,23 @@ io.on('connection', (socket) => {
     io.emit('party-update', getPartyList());
   });
 
-  // ── Admin: claim powers (owner code grants admin + opens management) ──
+  // ── Owner: verify owner code (opens management panel on client) ──
   socket.on('claim-admin', ({ password }, cb) => {
     if (typeof cb !== 'function') return;
     if (password !== OWNER_CODE) return cb({ ok: false, error: 'Wrong password' });
     const user = users[socket.id];
     if (!user) return cb({ ok: false });
-    user.isAdmin = true;
-    io.emit('party-update', getPartyList());
     cb({ ok: true, isOwner: true });
   });
 
+  // ── Deprecated: kept for backward compatibility but no longer toggles admin ──
   socket.on('revoke-admin', () => {
-    const user = users[socket.id];
-    if (user) {
-      // Role-based admins (admin/owner stored in account) keep their role
-      // but can voluntarily deactivate session admin powers
-      user.isAdmin = false;
-      io.emit('party-update', getPartyList());
-    }
+    // No-op: admin privileges are now managed only through the owner panel
   });
 
-  // ── Admin: re-claim powers based on stored role (no password needed) ──
+  // ── Deprecated: kept for backward compatibility but no longer toggles admin ──
   socket.on('claim-role-admin', () => {
-    const user = users[socket.id];
-    if (!user) return;
-    if (user.role === 'admin' || user.role === 'owner') {
-      user.isAdmin = true;
-      io.emit('party-update', getPartyList());
-    }
+    // No-op: admin privileges are now determined by stored role on join
   });
 
   // ── Owner: search registered users ──
