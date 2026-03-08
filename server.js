@@ -347,7 +347,13 @@ io.on('connection', (socket) => {
     const user = users[socket.id];
     if (!user || user.serverMuted) return;
     if (user.isBroadcaster) {
-      if (user.broadcastPaused) return;
+      if (user.broadcastPaused) {
+        // When paused, still allow talking within own party
+        if (user.party !== null) {
+          socket.to(`party-${user.party}`).volatile.emit('audio-from', { from: socket.id, chunk });
+        }
+        return;
+      }
       const targets = user.broadcastTargets;
       if (targets === 'all') {
         // Broadcast to everyone except self
