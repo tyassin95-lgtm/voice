@@ -1,0 +1,11 @@
+{
+  "servers": [
+    {
+      "id": "default",
+      "name": "Community Server",
+      "requireMembership": false,
+      "members": [],
+      "parties": 12
+    }
+  ]
+}
