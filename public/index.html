@@ -2932,8 +2932,9 @@ function loadServerList() {
     }
     list.innerHTML = res.servers.map(s => {
       const lockBadge = s.requireMembership ? '<span class="server-list-badge locked">🔒 Members Only</span>' : '';
+      const initial = s.name ? esc(s.name[0].toUpperCase()) : '?';
       return `<div class="server-list-item" onclick="selectServer('${esc(s.id)}')">
-        <div class="server-list-icon">${esc(s.name[0].toUpperCase())}</div>
+        <div class="server-list-icon">${initial}</div>
         <div class="server-list-info">
           <div class="server-list-name">${esc(s.name)}</div>
           <div class="server-list-meta">${s.parties} parties · ${s.onlineCount} online</div>
@@ -2977,8 +2978,8 @@ function renderServerNav() {
     res.servers.forEach(s => {
       const btn = document.createElement('button');
       btn.className = 'server-nav-btn' + (s.id === currentServerId ? ' active' : '');
-      btn.title = s.name;
-      btn.textContent = s.name[0].toUpperCase();
+      btn.title = s.name || '';
+      btn.textContent = s.name ? s.name[0].toUpperCase() : '?';
       btn.onclick = () => switchServer(s.id);
 
       const indicator = document.createElement('div');
@@ -3124,10 +3125,17 @@ function ownerSaveServer(serverId) {
   const parties = parseInt(document.getElementById('srv-edit-parties').value);
   const requireMembership = document.getElementById('srv-edit-membership').checked;
 
-  let pending = 0;
-  const done = () => { if (--pending <= 0) { loadOwnerServerList(); renderServerNav(); notify('Server updated', 'success'); } };
+  let pending = 3;
+  let hasError = false;
+  const done = (res) => {
+    if (res && !res.ok) hasError = true;
+    if (--pending <= 0) {
+      loadOwnerServerList();
+      renderServerNav();
+      notify(hasError ? 'Some changes may have failed' : 'Server updated', hasError ? 'warn' : 'success');
+    }
+  };
 
-  pending = 3;
   socket.emit('owner-rename-server', { serverId, name, ownerCode }, done);
   socket.emit('owner-set-parties', { serverId, count: parties, ownerCode }, done);
   socket.emit('owner-toggle-membership', { serverId, requireMembership, ownerCode }, done);
