@@ -1001,6 +1001,11 @@ export function renderMainPanel() {
   view.innerHTML = html;
 }
 
+function getMemberRole(username) {
+  const entry = S.memberList.find(u => u.username === username);
+  return entry?.role || 'user';
+}
+
 function memberCardHTML(m, isMe) {
   const speaking   = isMe ? (S.amISpeaking && !S.isMuted && !S.settings.pushToTalk) : false;
   const muted      = isMe && S.isMuted && !S.isDeafened && !S.settings.pushToTalk;
@@ -1018,7 +1023,7 @@ function memberCardHTML(m, isMe) {
     ? `<img src="${esc(avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
     : esc((m.username || '?')[0].toUpperCase());
   const bannerColor = safeColor(isMe ? S.myBannerColor : (m.bannerColor || '#5865f2'));
-  const memberRole = isMe ? S.myRole : (S.memberList.find(u => u.username === m.username)?.role || 'user');
+  const memberRole = isMe ? S.myRole : getMemberRole(m.username);
   const glowClass = memberRole === 'owner' ? ' role-owner-glow' : memberRole === 'admin' ? ' role-admin-glow' : '';
 
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
