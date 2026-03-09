@@ -419,6 +419,82 @@
     .members-grid { grid-template-columns:repeat(2,1fr); gap:6px }
     .bc-party-grid { grid-template-columns:repeat(2,1fr) }
   }
+
+/* ═══ SERVER ICON BAR ═══ */
+:root { --server-bar-w: 72px; --members-w: 240px; }
+.server-bar{position:fixed;top:0;left:0;bottom:0;width:var(--server-bar-w);background:var(--nav-bg);display:flex;flex-direction:column;align-items:center;padding:12px 0 12px;gap:8px;overflow-y:auto;overflow-x:hidden;z-index:42;scrollbar-width:none}
+.server-bar::-webkit-scrollbar{display:none}
+.server-icon{width:48px;height:48px;border-radius:50%;background:var(--panel);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;overflow:hidden;flex-shrink:0;position:relative}
+.server-icon:hover,.server-icon.active{border-radius:16px}
+.server-icon.active{background:var(--accent)}
+.server-icon img{width:100%;height:100%;object-fit:cover}
+.server-icon .server-initial{font-size:18px;font-weight:600;color:var(--text-2)}
+.server-icon.active .server-initial{color:#fff}
+.server-icon:hover .server-initial{color:var(--text)}
+.server-divider{width:32px;height:2px;background:var(--border);border-radius:1px;flex-shrink:0}
+.server-add-btn{width:48px;height:48px;border-radius:50%;background:var(--panel);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;color:var(--green);font-size:24px;flex-shrink:0}
+.server-add-btn:hover{border-radius:16px;background:var(--green);color:#fff}
+.server-indicator{position:absolute;left:-4px;width:4px;background:#fff;border-radius:0 4px 4px 0;transition:height 0.2s}
+
+/* ═══ CHANNEL SIDEBAR (replaces old sidebar) ═══ */
+.sidebar{position:fixed;top:0;left:var(--server-bar-w);bottom:0;width:var(--sidebar-w);background:var(--panel);overflow-y:auto;overflow-x:hidden;padding:0 0 calc(var(--bottom-h)+16px);z-index:40;transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
+
+/* ═══ MEMBER LIST SIDEBAR ═══ */
+.members-sidebar{position:fixed;top:var(--header-h);right:0;bottom:var(--bottom-h);width:var(--members-w);background:var(--panel);overflow-y:auto;padding:16px 8px;z-index:30;border-left:1px solid var(--nav-bg)}
+.members-sidebar-title{font-size:11px;font-weight:700;letter-spacing:0.05em;color:var(--text-3);text-transform:uppercase;padding:0 8px 8px;margin-bottom:4px}
+.member-list-section{margin-bottom:16px}
+.member-list-header{font-size:11px;font-weight:700;letter-spacing:0.05em;color:var(--text-3);text-transform:uppercase;padding:4px 8px;display:flex;align-items:center;gap:6px}
+.member-list-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.1s}
+.member-list-item:hover{background:rgba(255,255,255,0.04)}
+.member-list-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
+.member-list-avatar img{width:100%;height:100%;object-fit:cover}
+.member-list-status{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--panel)}
+.member-list-status.online{background:var(--green)}
+.member-list-status.offline{background:#747f8d}
+.member-list-name{font-size:14px;font-weight:500;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member-list-item.online .member-list-name{color:var(--text)}
+
+/* ═══ LAYOUT ADJUSTMENTS ═══ */
+.app-header{left:calc(var(--server-bar-w) + var(--sidebar-w));right:var(--members-w)}
+.main-panel{left:calc(var(--server-bar-w) + var(--sidebar-w));right:var(--members-w)}
+.bottom-controls{left:calc(var(--server-bar-w) + var(--sidebar-w));right:var(--members-w)}
+.status-bar{left:var(--server-bar-w);width:var(--sidebar-w)}
+
+/* Channel item lock icon */
+.ch-lock{font-size:12px;color:var(--text-3);flex-shrink:0}
+
+/* ═══ SERVER MANAGEMENT MODAL ═══ */
+.server-mgmt-section{margin-bottom:16px}
+.server-mgmt-label{font-size:12px;font-weight:700;letter-spacing:0.02em;color:var(--text-2);text-transform:uppercase;margin-bottom:8px}
+.app-list{max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--nav-bg)}
+.app-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border)}
+.app-item:last-child{border-bottom:none}
+.app-actions{display:flex;gap:4px}
+.app-btn{padding:4px 8px;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.app-btn-accept{background:rgba(59,165,93,0.15);color:var(--green)}
+.app-btn-accept:hover{background:rgba(59,165,93,0.3)}
+.app-btn-reject{background:rgba(237,66,69,0.15);color:var(--red)}
+.app-btn-reject:hover{background:rgba(237,66,69,0.3)}
+
+/* ═══ PROFILE POPUP ═══ */
+.profile-popup{position:fixed;background:#232428;border-radius:var(--radius);padding:16px;width:300px;z-index:301;box-shadow:0 8px 16px rgba(0,0,0,0.24);animation:popIn 0.1s ease}
+.profile-banner{height:60px;background:var(--accent);border-radius:var(--radius) var(--radius) 0 0;margin:-16px -16px 0}
+.profile-avatar-large{width:64px;height:64px;border-radius:50%;background:var(--accent-dim);margin:-32px auto 8px;border:4px solid #232428;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;overflow:hidden;position:relative;z-index:1}
+.profile-avatar-large img{width:100%;height:100%;object-fit:cover}
+.profile-username{font-size:18px;font-weight:600;color:var(--text);text-align:center;margin-bottom:4px}
+.profile-bio{font-size:13px;color:var(--text-3);text-align:center;padding:8px;background:var(--nav-bg);border-radius:var(--radius-sm);margin-top:8px}
+
+/* ═══ MOBILE OVERRIDES FOR NEW LAYOUT ═══ */
+@media(max-width:768px){
+  :root{ --server-bar-w:0px; --members-w:0px }
+  .server-bar{display:none}
+  .members-sidebar{display:none}
+  .app-header{left:0;right:0}
+  .main-panel{left:0;right:0}
+  .bottom-controls{left:0;right:0}
+  .sidebar{left:0}
+  .status-bar{left:0}
+}
 </style>
 </head>
 <body>
@@ -433,11 +509,10 @@
       <div class="login-icon">🎙️</div>
       <div class="login-brand">OathlyVoice</div>
     </div>
-    <div class="modal-sub">Welcome back! Sign in or continue as guest</div>
+    <div class="modal-sub">Welcome back! Sign in or register</div>
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchAuthTab('login')">Sign In</button>
       <button class="modal-tab" onclick="switchAuthTab('register')">Register</button>
-      <button class="modal-tab" onclick="switchAuthTab('guest')">Guest</button>
     </div>
 
     <!-- Login -->
@@ -457,13 +532,6 @@
       <button type="submit" class="btn-primary">Create Account</button>
     </form>
 
-    <!-- Guest -->
-    <form id="tab-guest" style="display:none" onsubmit="event.preventDefault(); doGuest();">
-      <div class="field"><label>Display Name</label><input type="text" id="guest-name" placeholder="Enter your name" maxlength="24"/></div>
-      <div class="modal-err" id="guest-err"></div>
-      <button type="submit" class="btn-primary">Join as Guest</button>
-      <p style="font-size:11px;color:var(--text-3);margin-top:12px;text-align:center">Settings won't be saved as a guest</p>
-    </form>
   </div>
 </div>
 
@@ -557,6 +625,7 @@
       <button class="btn-primary" onclick="saveSettings()">Save to Account</button>
     </div>
     <button class="btn-ghost" onclick="closeSettings()">Close</button>
+    <button class="btn-ghost" onclick="closeSettings();openProfileModal()" style="margin-top:6px">Edit Profile</button>
     <button class="btn-ghost" onclick="logout()" style="margin-top:6px;border-color:var(--red);color:var(--red);opacity:0.7" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">Sign Out</button>
   </div>
 </div>
@@ -618,12 +687,15 @@
 
 <!-- ═══ APP ═══ -->
 <div id="app">
+  <div class="server-bar" id="server-bar">
+    <!-- Server icons rendered by JS -->
+  </div>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-header-brand"><span class="sidebar-header-icon">🎙️</span> OathlyVoice</div>
+      <div class="sidebar-header-brand"><span class="sidebar-header-icon">🎙️</span> <span id="sidebar-server-name">OathlyVoice</span></div>
     </div>
-    <div class="sidebar-label">Voice Channels</div>
+    <div class="sidebar-label">Voice Channels <button id="create-channel-btn" onclick="openCreateChannelModal()" style="background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:0 4px" title="Create Channel">+</button></div>
     <div id="party-list"></div>
   </aside>
 
@@ -659,6 +731,11 @@
     <div id="party-view" style="display:none"></div>
   </main>
 
+  <aside class="members-sidebar" id="members-sidebar">
+    <div class="members-sidebar-title">Members</div>
+    <div id="member-list"></div>
+  </aside>
+
   <div id="ptt-indicator">🎙 Transmitting…</div>
   <button id="ptt-touch-btn" aria-label="Push to Talk"></button>
 
@@ -689,6 +766,102 @@
     <div class="status-dot connected" id="status-dot"></div>
     <span class="status-text" id="status-text">Connected</span>
   </div>
+
+<!-- ═══ SERVER BROWSER MODAL ═══ -->
+<div class="modal-overlay hidden" id="server-browser-modal">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Browse Servers</div>
+      <button onclick="closeServerBrowser()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="modal-sub">Join a server or create a new one</div>
+    <div id="server-browser-list" style="max-height:400px;overflow-y:auto"></div>
+    <div class="modal-err" id="server-browser-err"></div>
+    <button class="btn-ghost" onclick="closeServerBrowser()">Close</button>
+  </div>
+</div>
+
+<!-- ═══ CREATE CHANNEL MODAL ═══ -->
+<div class="modal-overlay hidden" id="create-channel-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Create Channel</div>
+      <button onclick="closeCreateChannelModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <form onsubmit="event.preventDefault(); submitCreateChannel();">
+      <div class="field"><label>Channel Name</label><input type="text" id="new-ch-name" placeholder="e.g. General Voice" maxlength="32"/></div>
+      <div class="setting-row">
+        <div class="setting-label">Private (password required)</div>
+        <label class="toggle"><input type="checkbox" id="new-ch-private" onchange="document.getElementById('new-ch-pw-field').style.display=this.checked?'block':'none'"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="field" id="new-ch-pw-field" style="display:none;margin-top:12px"><label>Channel Password</label><input type="password" id="new-ch-password" placeholder="Enter password"/></div>
+      <div class="setting-row" id="new-ch-temp-row">
+        <div class="setting-label">Temporary<small>Channel deletes when empty</small></div>
+        <label class="toggle"><input type="checkbox" id="new-ch-temp"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="modal-err" id="create-ch-err"></div>
+      <button type="submit" class="btn-primary" style="margin-top:12px">Create Channel</button>
+    </form>
+    <button class="btn-ghost" onclick="closeCreateChannelModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ CHANNEL PASSWORD MODAL ═══ -->
+<div class="modal-overlay hidden" id="channel-pw-modal">
+  <div class="modal">
+    <div class="modal-title">🔒 Private Channel</div>
+    <div class="modal-sub">This channel requires a password to join</div>
+    <form onsubmit="event.preventDefault(); submitChannelPassword();">
+      <div class="field"><label>Password</label><input type="password" id="ch-pw-input" placeholder="Enter channel password"/></div>
+      <div class="modal-err" id="ch-pw-err"></div>
+      <button type="submit" class="btn-primary">Join Channel</button>
+    </form>
+    <button class="btn-ghost" onclick="closeChannelPasswordModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ SERVER SETTINGS MODAL ═══ -->
+<div class="modal-overlay hidden" id="server-settings-modal">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Server Settings</div>
+      <button onclick="closeServerSettings()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="server-mgmt-section" id="server-pending-section" style="display:none">
+      <div class="server-mgmt-label">Pending Applications</div>
+      <div id="server-pending-list" class="app-list"></div>
+    </div>
+    <div class="server-mgmt-section">
+      <div class="server-mgmt-label">Server Members</div>
+      <div id="server-member-mgmt-list" class="app-list" style="max-height:300px;overflow-y:auto"></div>
+    </div>
+    <button class="btn-ghost" onclick="closeServerSettings()">Close</button>
+  </div>
+</div>
+
+<!-- ═══ PROFILE MODAL ═══ -->
+<div class="modal-overlay hidden" id="profile-modal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="modal-title">Edit Profile</div>
+      <button onclick="closeProfileModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div class="profile-avatar-large" id="profile-avatar-preview" style="margin:0 auto 12px">
+        <span id="profile-avatar-initial"></span>
+      </div>
+      <label class="btn-primary" style="display:inline-block;width:auto;padding:0 16px;cursor:pointer">
+        Upload Avatar
+        <input type="file" id="avatar-file-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadAvatar()">
+      </label>
+    </div>
+    <div class="field"><label>Bio</label><textarea id="profile-bio" rows="3" placeholder="Tell us about yourself..." style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea></div>
+    <div class="modal-err" id="profile-err"></div>
+    <button class="btn-primary" onclick="saveProfile()" style="margin-top:8px">Save Profile</button>
+    <button class="btn-ghost" onclick="closeProfileModal()">Close</button>
+  </div>
+</div>
+
 </div>
 
 <!-- ═══ USER POPOVER ═══ -->
@@ -726,7 +899,7 @@ const socket = io({
 
 let myUsername    = '';
 let myPassword    = '';   // only set for registered users
-let isGuest       = true;
+let isGuest       = false;
 let currentParty  = null;
 let isBroadcaster = false;
 let isMuted       = false;
@@ -738,6 +911,17 @@ let serverMutedMe = false;
 let localStream   = null;
 let partyData     = {};
 let amISpeaking   = false;
+
+// ── Server/Channel state ──
+let currentServerId = null;
+let currentChannelId = null;
+let serverList = [];
+let currentServerData = null;
+let currentChannelUsers = {};
+let serverOnlineMembers = [];
+let pendingChannelJoin = null;
+let myBio = '';
+let myAvatar = null;
 
 // ── Latency tracking ──
 const peerLatency = {};   // socketId → latency in ms
@@ -796,11 +980,11 @@ function esc(str) {
 }
 
 function switchAuthTab(tab) {
-  ['login','register','guest'].forEach(t => {
+  ['login','register'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('.modal-tab').forEach((el, i) => {
-    el.classList.toggle('active', ['login','register','guest'][i] === tab);
+    el.classList.toggle('active', ['login','register'][i] === tab);
   });
 }
 
@@ -821,7 +1005,10 @@ async function doLogin() {
     isGuest    = false;
     myRole     = data.role || 'user';
     applySettings(data.settings);
+    myBio = data.bio || '';
+    myAvatar = data.avatar || null;
     enterApp();
+    loadServerList();
   } catch (e) {
     setErr('login-err', 'Could not reach server — try again');
   }
@@ -847,17 +1034,10 @@ async function doRegister() {
     isGuest    = false;
     notify('Account created! Welcome, ' + username, 'success');
     enterApp();
+    loadServerList();
   } catch (e) {
     setErr('reg-err', 'Could not reach server — try again');
   }
-}
-
-function doGuest() {
-  const name = document.getElementById('guest-name').value.trim();
-  if (!name) return setErr('guest-err', 'Enter a name');
-  myUsername = name;
-  isGuest    = true;
-  enterApp();
 }
 
 function setErr(id, msg) {
@@ -868,13 +1048,14 @@ function enterApp() {
   document.getElementById('auth-modal').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
   document.getElementById('header-username').textContent = myUsername;
-  document.getElementById('header-avatar').textContent   = myUsername[0].toUpperCase();
-  document.getElementById('settings-save-row').style.display = isGuest ? 'none' : 'block';
-  document.getElementById('settings-sub').textContent = isGuest
-    ? 'Guest — settings not saved'
-    : `Signed in as ${myUsername}`;
+  document.getElementById('header-avatar').textContent = myUsername[0].toUpperCase();
+  if (myAvatar) {
+    document.getElementById('header-avatar').innerHTML = `<img src="/voice/${myAvatar}" alt="">`;
+  }
+  document.getElementById('settings-save-row').style.display = 'block';
+  document.getElementById('settings-sub').textContent = `Signed in as ${myUsername}`;
   socket.emit('join', { username: myUsername });
-  initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
+  initAudio();
   applySettingsUI();
   initPTTTouchButton();
 }
@@ -1606,7 +1787,7 @@ function _handleCaptureFrame(i16Frame, rms) {
     }
   }
 
-  if (!currentParty && !isBroadcaster) return;
+  if (!currentParty && !currentChannelId && !isBroadcaster) return;
   if (serverMutedMe) return;
   if (settings.pushToTalk || settings.pttTouch) {
     if (!pttActive) return;
@@ -2321,73 +2502,45 @@ function closeSidebar() {
 }
 
 function renderSidebar() {
+  if (currentServerId) {
+    renderChannelSidebar();
+    return;
+  }
   const list = document.getElementById('party-list');
   list.innerHTML = '';
   for (let i = 1; i <= 12; i++) {
     const members = partyData[i] || [];
     const count   = members.length;
     const active  = currentParty === i;
-
-    // Channel row
     const div = document.createElement('div');
     div.className = 'channel-item' + (active ? ' active' : '') + (count > 0 ? ' has-members' : '');
     div.onclick = () => { joinParty(i); closeSidebar(); };
     div.innerHTML = `<span class="ch-icon">${active?'🔊':'🔈'}</span><span class="ch-label">Party ${i}</span><span class="ch-count">${count||''}</span>`;
-    
-    // Make channel a drop target for admins
     if (isAdmin) {
-      div.ondragover = (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        div.classList.add('drag-over');
-      };
-      div.ondragleave = (e) => {
-        div.classList.remove('drag-over');
-      };
-      div.ondrop = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        div.classList.remove('drag-over');
-        const targetId = e.dataTransfer.getData('text/plain');
-        if (targetId && targetId !== socket.id) {
-          socket.emit('admin-move', { targetId, toPartyId: i });
-        }
-      };
+      div.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect='move'; div.classList.add('drag-over'); };
+      div.ondragleave = () => div.classList.remove('drag-over');
+      div.ondrop = (e) => { e.preventDefault(); e.stopPropagation(); div.classList.remove('drag-over'); const targetId=e.dataTransfer.getData('text/plain'); if(targetId&&targetId!==socket.id) socket.emit('admin-move',{targetId,toPartyId:i}); };
     }
-    
     list.appendChild(div);
-
-    // Member list under channel (always shown if has members)
     if (count > 0) {
       const memberList = document.createElement('div');
       memberList.className = 'ch-members';
       memberList.style.display = 'block';
       members.forEach(m => {
         const isMe = m.socketId === socket.id;
-        const row  = document.createElement('div');
+        const row = document.createElement('div');
         row.className = 'ch-member-row';
         row.dataset.sid = m.socketId;
-        
-        // Make draggable for admins (except for yourself)
         if (isAdmin && !isMe) {
           row.draggable = true;
-          row.ondragstart = (e) => {
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', m.socketId);
-            row.classList.add('dragging');
-          };
-          row.ondragend = (e) => {
-            row.classList.remove('dragging');
-          };
+          row.ondragstart = (e) => { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',m.socketId); row.classList.add('dragging'); };
+          row.ondragend = () => row.classList.remove('dragging');
         }
-
         const nameSpan = document.createElement('span');
-        nameSpan.className = 'ch-member-name' + (isMe ? ' is-you' : '') + (m.serverMuted ? ' is-muted' : '') + (m.selfMuted ? ' self-muted' : '') + (m.selfDeafened ? ' self-deafened' : '');
+        nameSpan.className = 'ch-member-name' + (isMe?' is-you':'') + (m.serverMuted?' is-muted':'') + (m.selfMuted?' self-muted':'') + (m.selfDeafened?' self-deafened':'');
         const muteIcon = m.selfDeafened ? '🔕' : m.selfMuted ? '🔇' : '';
-        nameSpan.textContent = (isMe ? '▶ ' : '') + muteIcon + (muteIcon ? ' ' : '') + m.username;
+        nameSpan.textContent = (isMe?'▶ ':'') + muteIcon + (muteIcon?' ':'') + m.username;
         row.appendChild(nameSpan);
-
-        // Latency indicator
         const lat = isMe ? myLatency : peerLatency[m.socketId];
         if (lat != null) {
           const latSpan = document.createElement('span');
@@ -2395,27 +2548,20 @@ function renderSidebar() {
           latSpan.textContent = lat + 'ms';
           row.appendChild(latSpan);
         }
-
-        // Tags (hidden on hover in favour of admin buttons)
         const tags = document.createElement('div');
         tags.className = 'ch-member-tags';
-        if (m.isAdmin)      tags.innerHTML += '<span class="ch-tag ch-tag-admin">ADM</span>';
-        if (m.serverMuted)  tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTED</span>';
+        if (m.isAdmin) tags.innerHTML += '<span class="ch-tag ch-tag-admin">ADM</span>';
+        if (m.serverMuted) tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTED</span>';
         if (m.selfDeafened) tags.innerHTML += '<span class="ch-tag ch-tag-deafened">DEAF</span>';
         else if (m.selfMuted) tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTE</span>';
         row.appendChild(tags);
-
-        // Admin buttons (shown on hover, only if isAdmin)
         if (isAdmin && !isMe) {
           const adminBtns = document.createElement('div');
           adminBtns.className = 'ch-admin-btns';
           const muteLabel = m.serverMuted ? 'Unmute' : 'Mute';
-          adminBtns.innerHTML =
-            `<button class="ch-admin-btn mute-btn" onclick="sidebarAdminMute('${m.socketId}',${m.serverMuted},event)">${muteLabel}</button>` +
-            `<button class="ch-admin-btn" onclick="sidebarAdminKick('${m.socketId}','${esc(m.username).replace(/'/g,'&#39;')}',event)">Kick</button>`;
+          adminBtns.innerHTML = `<button class="ch-admin-btn mute-btn" onclick="sidebarAdminMute('${m.socketId}',${m.serverMuted},event)">${muteLabel}</button><button class="ch-admin-btn" onclick="sidebarAdminKick('${m.socketId}','${esc(m.username).replace(/'/g,'&#39;')}',event)">Kick</button>`;
           row.appendChild(adminBtns);
         }
-
         memberList.appendChild(row);
       });
       list.appendChild(memberList);
@@ -2447,10 +2593,54 @@ function renderMainPanel() {
   const view     = document.getElementById('party-view');
   const leaveBtn = document.getElementById('btn-leave');
   const chanName = document.getElementById('header-channel-name');
+
+  // Channel mode
+  if (currentServerId && currentChannelId && currentServerData) {
+    const ch = currentServerData.channels[currentChannelId];
+    if (leaveBtn) leaveBtn.style.display = 'flex';
+    leaveBtn.onclick = () => leaveChannel();
+    if (chanName) chanName.textContent = ch ? ch.name : 'Channel';
+    updateBcPauseBtn();
+    empty.style.display = 'none';
+    view.style.display = 'block';
+
+    const members = currentChannelUsers[currentChannelId] || [];
+    const isServerAdmin = currentServerData.admins.includes(myUsername) || currentServerData.owner === myUsername;
+
+    let html = `<div class="party-header">
+      <div class="party-header-icon">${ch && ch.private ? '🔒' : '🎙️'}</div>
+      <div>
+        <div class="party-title">${esc(ch ? ch.name : 'Channel')}</div>
+        <div class="party-sub">${members.length} member${members.length!==1?'s':''} · Click a user to adjust volume${isServerAdmin?' · Admin mode active':''}</div>
+      </div>
+    </div>`;
+
+    html += '<div class="members-grid">';
+    if (members.find(m => m.socketId === socket.id) || isBroadcaster)
+      html += memberCardHTML({ socketId: socket.id, username: myUsername, isBroadcaster, isAdmin: isServerAdmin, serverMuted: serverMutedMe }, true);
+    members.forEach(m => { if (m.socketId !== socket.id) html += memberCardHTML(m, false); });
+    html += '</div>';
+    view.innerHTML = html;
+    return;
+  }
+
+  // Legacy party mode
   if (leaveBtn) leaveBtn.style.display = currentParty ? 'flex' : 'none';
-  if (chanName) chanName.textContent = currentParty ? `Party ${currentParty}` : 'No Channel';
+  if (leaveBtn) leaveBtn.onclick = () => leaveParty();
+  if (chanName) chanName.textContent = currentParty ? `Party ${currentParty}` : (currentServerData ? currentServerData.name : 'No Channel');
   updateBcPauseBtn();
-  if (!currentParty) { empty.style.display='flex'; view.style.display='none'; return; }
+  if (!currentParty && !currentChannelId) {
+    empty.style.display = 'flex';
+    view.style.display = 'none';
+    if (currentServerData) {
+      empty.querySelector('.empty-title').textContent = currentServerData.name;
+      empty.querySelector('.empty-sub').textContent = 'Select a voice channel to get started';
+    } else {
+      empty.querySelector('.empty-title').textContent = 'No server selected';
+      empty.querySelector('.empty-sub').textContent = 'Pick a server from the left sidebar';
+    }
+    return;
+  }
   empty.style.display='none'; view.style.display='block';
 
   const members = partyData[currentParty] || [];
@@ -2482,11 +2672,11 @@ function renderMainPanel() {
   const allCards = [...members];
   broadcasters.forEach(b => { if (!allCards.find(m=>m.socketId===b.socketId)) allCards.push(b); });
 
-  html += `<div class="members-grid">`;
+  html += '<div class="members-grid">';
   if (members.find(m=>m.socketId===socket.id) || isBroadcaster)
     html += memberCardHTML({ socketId: socket.id, username: myUsername, isBroadcaster, isAdmin, serverMuted: serverMutedMe }, true);
   allCards.forEach(m => { if (m.socketId !== socket.id) html += memberCardHTML(m, false); });
-  html += `</div>`;
+  html += '</div>';
   view.innerHTML = html;
 }
 
@@ -2553,6 +2743,7 @@ socket.on('connect', () => {
   if (myUsername) {
     socket.emit('join', { username: myUsername });
     if (currentParty) socket.emit('join-party', { partyId: currentParty });
+    if (currentServerId && currentChannelId) socket.emit('join-channel', { serverId: currentServerId, channelId: currentChannelId });
     if (isBroadcaster) socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
     if (isAdmin) {
       // On reconnect, role-based admins will get auto-granted via 'join' handler
@@ -2805,6 +2996,540 @@ function playSound(type) {
     }
   } catch(e) { /* audio unavailable */ }
 }
+
+// ═══ SERVER SYSTEM ═══
+
+async function loadServerList() {
+  try {
+    const res = await fetch('/voice/api/servers');
+    const data = await res.json();
+    if (data.ok) {
+      serverList = data.servers;
+      renderServerBar();
+    }
+  } catch(e) { console.warn('Failed to load servers:', e); }
+}
+
+function renderServerBar() {
+  const bar = document.getElementById('server-bar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  serverList.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'server-icon' + (currentServerId === s.id ? ' active' : '');
+    div.title = s.name;
+    div.onclick = () => selectServer(s.id);
+    if (s.icon) {
+      div.innerHTML = `<img src="/voice/${s.icon}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="server-initial" style="display:none">${esc(s.name[0].toUpperCase())}</span>`;
+    } else {
+      div.innerHTML = `<span class="server-initial">${esc(s.name[0].toUpperCase())}</span>`;
+    }
+    if (currentServerId === s.id) {
+      const indicator = document.createElement('div');
+      indicator.className = 'server-indicator';
+      indicator.style.height = '40px';
+      indicator.style.top = '4px';
+      div.appendChild(indicator);
+    }
+    bar.appendChild(div);
+  });
+  const divider = document.createElement('div');
+  divider.className = 'server-divider';
+  bar.appendChild(divider);
+  const addBtn = document.createElement('div');
+  addBtn.className = 'server-add-btn';
+  addBtn.innerHTML = '+';
+  addBtn.title = 'Browse / Join Servers';
+  addBtn.onclick = openServerBrowser;
+  bar.appendChild(addBtn);
+}
+
+async function selectServer(serverId) {
+  if (currentServerId === serverId && currentServerData) {
+    renderServerBar();
+    return;
+  }
+  if (currentChannelId) {
+    socket.emit('leave-channel');
+    Object.keys(peerPlayers).forEach(removePeerPlayer);
+    currentChannelId = null;
+    currentParty = null;
+  }
+  currentServerId = serverId;
+  socket.emit('select-server', { serverId });
+  try {
+    const res = await fetch('/voice/api/server/' + serverId);
+    const data = await res.json();
+    if (data.ok) {
+      currentServerData = data.server;
+      renderServerBar();
+      renderChannelSidebar();
+      renderMemberList();
+      renderMainPanel();
+      document.getElementById('sidebar-server-name').textContent = currentServerData.name;
+      if (!currentServerData.members.includes(myUsername)) {
+        if (!currentServerData.membershipRequired) {
+          await applyToServer(serverId);
+        }
+      }
+    }
+  } catch(e) { console.warn('Failed to load server:', e); }
+  socket.emit('get-server-members', { serverId }, (res) => {
+    if (res.ok) {
+      serverOnlineMembers = res.onlineMembers || [];
+      renderMemberList();
+    }
+  });
+}
+
+function renderChannelSidebar() {
+  const list = document.getElementById('party-list');
+  if (!list || !currentServerData) return;
+  list.innerHTML = '';
+  const channels = currentServerData.channels || {};
+  const isMember = currentServerData.members.includes(myUsername);
+  const isServerAdmin = currentServerData.admins.includes(myUsername) || currentServerData.owner === myUsername;
+
+  if (!isMember) {
+    const joinDiv = document.createElement('div');
+    joinDiv.style.padding = '16px';
+    joinDiv.style.textAlign = 'center';
+    if (currentServerData.membershipRequired) {
+      if (currentServerData.pendingApplications.includes(myUsername)) {
+        joinDiv.innerHTML = '<div style="color:var(--text-3);font-size:13px;margin-bottom:8px">Application pending...</div>';
+      } else {
+        joinDiv.innerHTML = `<div style="color:var(--text-3);font-size:13px;margin-bottom:8px">This server requires membership</div>
+          <button class="btn-primary" onclick="applyToServer('${esc(currentServerData.id)}')">Apply to Join</button>`;
+      }
+    } else {
+      joinDiv.innerHTML = `<button class="btn-primary" onclick="applyToServer('${esc(currentServerData.id)}')">Join Server</button>`;
+    }
+    list.appendChild(joinDiv);
+    return;
+  }
+
+  Object.values(channels).forEach(ch => {
+    const active = currentChannelId === ch.id;
+    const count = (currentChannelUsers[ch.id] || []).length;
+    const div = document.createElement('div');
+    div.className = 'channel-item' + (active ? ' active' : '') + (count > 0 ? ' has-members' : '');
+    div.onclick = () => joinChannel(currentServerId, ch.id, ch.private);
+    const lockIcon = ch.private ? '<span class="ch-lock">🔒</span>' : '';
+    const tempIcon = ch.temporary ? '<span style="font-size:10px;color:var(--text-3);margin-left:2px">⏱</span>' : '';
+    div.innerHTML = `<span class="ch-icon">${active?'🔊':'🔈'}</span><span class="ch-label">${esc(ch.name)}${tempIcon}</span>${lockIcon}<span class="ch-count">${count||''}</span>`;
+    list.appendChild(div);
+
+    if (count > 0) {
+      const memberList = document.createElement('div');
+      memberList.className = 'ch-members';
+      memberList.style.display = 'block';
+      (currentChannelUsers[ch.id] || []).forEach(m => {
+        const isMe = m.socketId === socket.id;
+        const row = document.createElement('div');
+        row.className = 'ch-member-row';
+        row.dataset.sid = m.socketId;
+        if (isServerAdmin && !isMe) {
+          row.draggable = true;
+          row.ondragstart = (e) => { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',m.socketId); row.classList.add('dragging'); };
+          row.ondragend = () => row.classList.remove('dragging');
+        }
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'ch-member-name' + (isMe?' is-you':'') + (m.serverMuted?' is-muted':'') + (m.selfMuted?' self-muted':'') + (m.selfDeafened?' self-deafened':'');
+        const muteIcon = m.selfDeafened ? '🔕' : m.selfMuted ? '🔇' : '';
+        nameSpan.textContent = (isMe?'▶ ':'') + muteIcon + (muteIcon?' ':'') + m.username;
+        row.appendChild(nameSpan);
+        const lat = isMe ? myLatency : peerLatency[m.socketId];
+        if (lat != null) {
+          const latSpan = document.createElement('span');
+          latSpan.className = 'ch-latency ' + latencyClass(lat);
+          latSpan.textContent = lat + 'ms';
+          row.appendChild(latSpan);
+        }
+        const tags = document.createElement('div');
+        tags.className = 'ch-member-tags';
+        if (m.isAdmin) tags.innerHTML += '<span class="ch-tag ch-tag-admin">ADM</span>';
+        if (m.serverMuted) tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTED</span>';
+        if (m.selfDeafened) tags.innerHTML += '<span class="ch-tag ch-tag-deafened">DEAF</span>';
+        else if (m.selfMuted) tags.innerHTML += '<span class="ch-tag ch-tag-muted">MUTE</span>';
+        row.appendChild(tags);
+        if (isServerAdmin && !isMe) {
+          const adminBtns = document.createElement('div');
+          adminBtns.className = 'ch-admin-btns';
+          const muteLabel = m.serverMuted ? 'Unmute' : 'Mute';
+          adminBtns.innerHTML = `<button class="ch-admin-btn mute-btn" onclick="sidebarAdminMute('${m.socketId}',${m.serverMuted},event)">${muteLabel}</button><button class="ch-admin-btn" onclick="sidebarAdminKick('${m.socketId}','${esc(m.username).replace(/'/g,'&#39;')}',event)">Kick</button>`;
+          row.appendChild(adminBtns);
+        }
+        memberList.appendChild(row);
+      });
+      list.appendChild(memberList);
+    }
+  });
+
+  if (currentChannelId) {
+    const lb = document.createElement('button');
+    lb.className = 'leave-btn';
+    lb.innerHTML = '✕ &nbsp;Leave channel';
+    lb.onclick = () => { leaveChannel(); };
+    list.appendChild(lb);
+  }
+
+  if (isServerAdmin) {
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'leave-btn';
+    settingsBtn.style.borderColor = 'var(--accent)';
+    settingsBtn.style.color = 'var(--accent2)';
+    settingsBtn.innerHTML = '⚙ &nbsp;Server Settings';
+    settingsBtn.onclick = openServerSettings;
+    settingsBtn.onmouseover = function() { this.style.borderColor='var(--accent2)'; this.style.background='rgba(88,101,242,0.1)'; };
+    settingsBtn.onmouseout = function() { this.style.borderColor='var(--accent)'; this.style.background='transparent'; };
+    list.appendChild(settingsBtn);
+  }
+}
+
+function renderMemberList() {
+  const listEl = document.getElementById('member-list');
+  if (!listEl || !currentServerData) { if(listEl) listEl.innerHTML = ''; return; }
+  const members = currentServerData.members || [];
+  const onlineSet = new Set(serverOnlineMembers);
+  const online = members.filter(m => onlineSet.has(m));
+  const offline = members.filter(m => !onlineSet.has(m));
+  let html = '';
+  html += `<div class="member-list-section"><div class="member-list-header">Online — ${online.length}</div>`;
+  online.forEach(m => {
+    html += `<div class="member-list-item online" onclick="showUserProfile('${esc(m)}')">
+      <div class="member-list-avatar"><span>${esc(m[0].toUpperCase())}</span><div class="member-list-status online"></div></div>
+      <span class="member-list-name">${esc(m)}</span>
+    </div>`;
+  });
+  html += '</div>';
+  html += `<div class="member-list-section"><div class="member-list-header">Offline — ${offline.length}</div>`;
+  offline.forEach(m => {
+    html += `<div class="member-list-item" onclick="showUserProfile('${esc(m)}')">
+      <div class="member-list-avatar"><span>${esc(m[0].toUpperCase())}</span><div class="member-list-status offline"></div></div>
+      <span class="member-list-name">${esc(m)}</span>
+    </div>`;
+  });
+  html += '</div>';
+  listEl.innerHTML = html;
+}
+
+async function applyToServer(serverId) {
+  try {
+    const res = await fetch('/voice/api/apply-server', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverId, username: myUsername })
+    });
+    const data = await res.json();
+    if (!data.ok) return notify(data.error, 'error');
+    if (data.joined) {
+      notify('Joined server!', 'success');
+      await selectServer(serverId);
+    } else if (data.applied) {
+      notify('Application submitted!', 'success');
+      renderChannelSidebar();
+    }
+  } catch(e) { notify('Failed to apply', 'error'); }
+}
+
+async function joinChannel(serverId, channelId, isPrivate) {
+  if (currentChannelId === channelId && currentServerId === serverId) return;
+  if (isPrivate) {
+    pendingChannelJoin = { serverId, channelId };
+    document.getElementById('channel-pw-modal').classList.remove('hidden');
+    document.getElementById('ch-pw-input').value = '';
+    document.getElementById('ch-pw-err').textContent = '';
+    setTimeout(() => document.getElementById('ch-pw-input').focus(), 100);
+    return;
+  }
+  doJoinChannel(serverId, channelId);
+}
+
+function doJoinChannel(serverId, channelId) {
+  Object.keys(peerPlayers).forEach(removePeerPlayer);
+  currentChannelId = channelId;
+  currentServerId = serverId;
+  currentParty = null;
+  socket.emit('join-channel', { serverId, channelId });
+  playSound('join');
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  startPingLoop();
+  renderChannelSidebar();
+  renderMainPanel();
+}
+
+function leaveChannel() {
+  if (!currentChannelId) return;
+  Object.keys(peerPlayers).forEach(removePeerPlayer);
+  socket.emit('leave-channel');
+  playSound('leave');
+  currentChannelId = null;
+  stopPingLoop();
+  Object.keys(peerLatency).forEach(k => delete peerLatency[k]);
+  renderChannelSidebar();
+  renderMainPanel();
+}
+
+async function submitChannelPassword() {
+  if (!pendingChannelJoin) return;
+  const pw = document.getElementById('ch-pw-input').value;
+  if (!pw) return;
+  try {
+    const res = await fetch('/voice/api/verify-channel-password', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverId: pendingChannelJoin.serverId, channelId: pendingChannelJoin.channelId, password: pw })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('ch-pw-err').textContent = data.error || 'Incorrect password';
+      return;
+    }
+    closeChannelPasswordModal();
+    doJoinChannel(pendingChannelJoin.serverId, pendingChannelJoin.channelId);
+    pendingChannelJoin = null;
+  } catch(e) { document.getElementById('ch-pw-err').textContent = 'Error verifying password'; }
+}
+
+function closeChannelPasswordModal() {
+  document.getElementById('channel-pw-modal').classList.add('hidden');
+  pendingChannelJoin = null;
+}
+
+// ═══ SERVER BROWSER ═══
+function openServerBrowser() {
+  document.getElementById('server-browser-modal').classList.remove('hidden');
+  loadServerBrowser();
+}
+function closeServerBrowser() {
+  document.getElementById('server-browser-modal').classList.add('hidden');
+}
+async function loadServerBrowser() {
+  const listEl = document.getElementById('server-browser-list');
+  listEl.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px">Loading...</div>';
+  try {
+    const res = await fetch('/voice/api/servers');
+    const data = await res.json();
+    if (!data.ok || !data.servers.length) {
+      listEl.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px">No servers available</div>';
+      return;
+    }
+    listEl.innerHTML = data.servers.map(s => `
+      <div class="mgmt-user-row" style="cursor:pointer" onclick="closeServerBrowser();selectServer('${esc(s.id)}')">
+        <div class="mgmt-user-avatar" style="border-radius:12px;overflow:hidden">
+          ${s.icon ? `<img src="/voice/${s.icon}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">` : ''}
+          <span>${esc(s.name[0].toUpperCase())}</span>
+        </div>
+        <div class="mgmt-user-info">
+          <div class="mgmt-user-name">${esc(s.name)}</div>
+          <div style="font-size:11px;color:var(--text-3)">${s.memberCount} members · ${s.channelCount} channels${s.membershipRequired?' · 🔒 Membership required':''}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { listEl.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:24px">Failed to load</div>'; }
+}
+
+// ═══ CREATE CHANNEL ═══
+function openCreateChannelModal() {
+  if (!currentServerId || !currentServerData) return;
+  const isServerAdmin = currentServerData.admins.includes(myUsername) || currentServerData.owner === myUsername;
+  document.getElementById('create-channel-modal').classList.remove('hidden');
+  document.getElementById('new-ch-name').value = '';
+  document.getElementById('new-ch-private').checked = false;
+  document.getElementById('new-ch-password').value = '';
+  document.getElementById('new-ch-pw-field').style.display = 'none';
+  document.getElementById('create-ch-err').textContent = '';
+  const tempCheck = document.getElementById('new-ch-temp');
+  const tempRow = document.getElementById('new-ch-temp-row');
+  if (!isServerAdmin) {
+    tempCheck.checked = true;
+    tempCheck.disabled = true;
+    tempRow.style.opacity = '0.5';
+  } else {
+    tempCheck.checked = false;
+    tempCheck.disabled = false;
+    tempRow.style.opacity = '1';
+  }
+}
+function closeCreateChannelModal() {
+  document.getElementById('create-channel-modal').classList.add('hidden');
+}
+async function submitCreateChannel() {
+  const name = document.getElementById('new-ch-name').value.trim();
+  if (!name) return document.getElementById('create-ch-err').textContent = 'Enter a channel name';
+  const isPrivate = document.getElementById('new-ch-private').checked;
+  const password = document.getElementById('new-ch-password').value;
+  const temporary = document.getElementById('new-ch-temp').checked;
+  if (isPrivate && !password) return document.getElementById('create-ch-err').textContent = 'Private channels need a password';
+  try {
+    const res = await fetch('/voice/api/create-channel', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverId: currentServerId, name, type: 'voice', isPrivate, password: isPrivate ? password : null, temporary, username: myUsername })
+    });
+    const data = await res.json();
+    if (!data.ok) return document.getElementById('create-ch-err').textContent = data.error;
+    closeCreateChannelModal();
+    notify('Channel created!', 'success');
+    await selectServer(currentServerId);
+  } catch(e) { document.getElementById('create-ch-err').textContent = 'Failed to create channel'; }
+}
+
+// ═══ SERVER SETTINGS ═══
+function openServerSettings() {
+  if (!currentServerData) return;
+  document.getElementById('server-settings-modal').classList.remove('hidden');
+  loadServerSettings();
+}
+function closeServerSettings() {
+  document.getElementById('server-settings-modal').classList.add('hidden');
+}
+function loadServerSettings() {
+  const pendingSection = document.getElementById('server-pending-section');
+  const pendingList = document.getElementById('server-pending-list');
+  if (currentServerData.pendingApplications.length > 0) {
+    pendingSection.style.display = 'block';
+    pendingList.innerHTML = currentServerData.pendingApplications.map(u => `
+      <div class="app-item">
+        <span style="font-size:14px;color:var(--text)">${esc(u)}</span>
+        <div class="app-actions">
+          <button class="app-btn app-btn-accept" onclick="approveMember('${esc(u)}')">Accept</button>
+          <button class="app-btn app-btn-reject" onclick="rejectMember('${esc(u)}')">Reject</button>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    pendingSection.style.display = 'none';
+  }
+  const membersList = document.getElementById('server-member-mgmt-list');
+  membersList.innerHTML = (currentServerData.members || []).map(m => {
+    const isOwner = m === currentServerData.owner;
+    const isAdminMember = currentServerData.admins.includes(m);
+    return `<div class="app-item">
+      <span style="font-size:14px;color:var(--text)">${esc(m)}</span>
+      <span class="mgmt-role-badge ${isOwner?'role-owner':isAdminMember?'role-admin':'role-user'}">${isOwner?'owner':isAdminMember?'admin':'member'}</span>
+    </div>`;
+  }).join('');
+}
+
+async function approveMember(username) {
+  try {
+    const res = await fetch('/voice/api/approve-member', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverId: currentServerId, username, adminUsername: myUsername })
+    });
+    const data = await res.json();
+    if (!data.ok) return notify(data.error, 'error');
+    notify(username + ' approved!', 'success');
+    await selectServer(currentServerId);
+    loadServerSettings();
+  } catch(e) { notify('Failed to approve', 'error'); }
+}
+
+async function rejectMember(username) {
+  try {
+    const res = await fetch('/voice/api/reject-member', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serverId: currentServerId, username, adminUsername: myUsername })
+    });
+    const data = await res.json();
+    if (!data.ok) return notify(data.error, 'error');
+    notify(username + ' rejected', 'success');
+    await selectServer(currentServerId);
+    loadServerSettings();
+  } catch(e) { notify('Failed to reject', 'error'); }
+}
+
+// ═══ PROFILE ═══
+function openProfileModal() {
+  document.getElementById('profile-modal').classList.remove('hidden');
+  document.getElementById('profile-bio').value = myBio || '';
+  const avatarPreview = document.getElementById('profile-avatar-preview');
+  if (myAvatar) {
+    avatarPreview.innerHTML = `<img src="/voice/${myAvatar}" alt="">`;
+  } else {
+    document.getElementById('profile-avatar-initial').textContent = myUsername[0].toUpperCase();
+  }
+}
+function closeProfileModal() {
+  document.getElementById('profile-modal').classList.add('hidden');
+}
+
+async function uploadAvatar() {
+  const fileInput = document.getElementById('avatar-file-input');
+  if (!fileInput.files.length) return;
+  const file = fileInput.files[0];
+  if (file.size > 2 * 1024 * 1024) return notify('File too large (max 2MB)', 'error');
+  const formData = new FormData();
+  formData.append('avatar', file);
+  formData.append('username', myUsername);
+  formData.append('password', myPassword);
+  try {
+    const res = await fetch('/voice/api/upload-avatar', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!data.ok) return notify(data.error || 'Upload failed', 'error');
+    myAvatar = data.avatar;
+    document.getElementById('profile-avatar-preview').innerHTML = `<img src="/voice/${myAvatar}" alt="">`;
+    document.getElementById('header-avatar').innerHTML = `<img src="/voice/${myAvatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    notify('Avatar updated!', 'success');
+  } catch(e) { notify('Upload failed', 'error'); }
+}
+
+async function saveProfile() {
+  myBio = document.getElementById('profile-bio').value.trim();
+  try {
+    const res = await fetch('/voice/api/update-profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: myUsername, password: myPassword, bio: myBio })
+    });
+    const data = await res.json();
+    if (!data.ok) return notify(data.error || 'Failed', 'error');
+    notify('Profile saved!', 'success');
+    closeProfileModal();
+  } catch(e) { notify('Failed to save', 'error'); }
+}
+
+async function showUserProfile(username) {
+  try {
+    const res = await fetch('/voice/api/profile/' + encodeURIComponent(username));
+    const data = await res.json();
+    if (!data.ok) return;
+    const p = data.profile;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = () => overlay.remove();
+    overlay.innerHTML = `<div class="profile-popup" onclick="event.stopPropagation()">
+      <div class="profile-banner"></div>
+      <div class="profile-avatar-large">${p.avatar ? `<img src="/voice/${p.avatar}" alt="">` : esc(p.username[0].toUpperCase())}</div>
+      <div class="profile-username">${esc(p.username)}</div>
+      ${p.bio ? `<div class="profile-bio">${esc(p.bio)}</div>` : ''}
+      ${p.createdAt ? `<div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:8px">Member since ${new Date(p.createdAt).toLocaleDateString()}</div>` : ''}
+    </div>`;
+    document.body.appendChild(overlay);
+  } catch(e) {}
+}
+
+// ═══ SOCKET SERVER EVENTS ═══
+socket.on('server-update', ({ serverId, channels, channelUsers, onlineMembers }) => {
+  if (serverId === currentServerId && currentServerData) {
+    currentServerData.channels = channels;
+    currentChannelUsers = channelUsers;
+    serverOnlineMembers = onlineMembers;
+    renderChannelSidebar();
+    renderMemberList();
+    if (currentChannelId) renderMainPanel();
+  }
+});
+
+socket.on('channel-deleted', ({ serverId, channelId }) => {
+  if (serverId === currentServerId && channelId === currentChannelId) {
+    notify('Channel was deleted', 'warn');
+    currentChannelId = null;
+    renderChannelSidebar();
+    renderMainPanel();
+  }
+});
+
+socket.on('channel-peers', ({ peers, serverId, channelId }) => {
+  renderMainPanel();
+});
 
 function logout() {
   if (!confirm('Sign out of OathlyVoice?')) return;
