@@ -408,6 +408,12 @@
     .slider-row { margin-bottom:12px }
     #notifications { max-width:240px; right:8px; bottom:calc(var(--bottom-h)+8px) }
     #ptt-indicator { bottom:calc(var(--bottom-h)+8px) }
+    .server-nav{width:0;display:none}
+    .right-sidebar{display:none !important}
+    .sidebar{left:0}
+    .app-header{left:0}
+    .main-panel{left:0;right:0}
+    .bottom-controls{left:0;right:0}
   }
 
   /* Very small phones */
@@ -419,6 +425,57 @@
     .members-grid { grid-template-columns:repeat(2,1fr); gap:6px }
     .bc-party-grid { grid-template-columns:repeat(2,1fr) }
   }
+
+  /* ═══ SERVER LIST ═══ */
+  .server-list-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--nav-bg);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s}
+  .server-list-item:hover{border-color:var(--accent);background:rgba(88,101,242,0.08)}
+  .server-list-icon{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:#fff;flex-shrink:0}
+  .server-list-info{flex:1;min-width:0}
+  .server-list-name{font-size:15px;font-weight:600;color:var(--text)}
+  .server-list-meta{font-size:12px;color:var(--text-3);margin-top:2px}
+  .server-list-badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:3px;white-space:nowrap}
+  .server-list-badge.online{background:rgba(59,165,93,0.15);color:var(--green)}
+  .server-list-badge.locked{background:rgba(254,231,92,0.15);color:#d4a017}
+
+  /* ═══ SERVER NAV (left strip) ═══ */
+  .server-nav{position:fixed;top:0;left:0;bottom:0;width:60px;background:var(--nav-bg);overflow-y:auto;overflow-x:hidden;z-index:42;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;scrollbar-width:none}
+  .server-nav::-webkit-scrollbar{display:none}
+  .server-nav-btn{width:44px;height:44px;border-radius:50%;background:var(--panel);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;border:none;color:var(--text-2);font-size:16px;font-weight:600;flex-shrink:0;position:relative}
+  .server-nav-btn:hover{border-radius:14px;background:var(--accent)}
+  .server-nav-btn.active{border-radius:14px;background:var(--accent);color:#fff}
+  .server-nav-btn .server-nav-indicator{position:absolute;left:-4px;width:4px;border-radius:0 4px 4px 0;background:var(--text);transition:height 0.15s}
+  .server-nav-btn:hover .server-nav-indicator{height:20px}
+  .server-nav-btn.active .server-nav-indicator{height:36px}
+  .server-nav-sep{width:32px;height:2px;background:var(--border);border-radius:1px;margin:4px 0;flex-shrink:0}
+
+  /* ═══ RIGHT SIDEBAR (member list) ═══ */
+  .right-sidebar{position:fixed;top:var(--header-h);right:0;bottom:var(--bottom-h);width:220px;background:var(--panel);overflow-y:auto;padding:12px 8px;z-index:38;-webkit-overflow-scrolling:touch;border-left:1px solid var(--nav-bg);display:none}
+  .right-sidebar-title{font-size:11px;font-weight:700;letter-spacing:0.05em;color:var(--text-3);text-transform:uppercase;padding:4px 8px;margin-bottom:4px}
+  .right-member-row{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:var(--radius-sm);margin-bottom:1px}
+  .right-member-row:hover{background:rgba(255,255,255,0.04)}
+  .right-member-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .right-member-dot.online{background:var(--green)}
+  .right-member-dot.offline{background:var(--text-3);opacity:0.4}
+  .right-member-name{font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .right-member-name.offline{color:var(--text-3);opacity:0.6}
+  .right-member-party{font-size:10px;color:var(--text-3);flex-shrink:0}
+
+  /* ═══ OWNER SERVER MANAGEMENT ═══ */
+  .srv-mgmt-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+  .srv-mgmt-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--nav-bg);border-radius:var(--radius-sm);margin-bottom:6px}
+  .srv-mgmt-row .srv-name{flex:1;font-size:14px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srv-mgmt-btn{padding:4px 8px;border:none;border-radius:var(--radius-sm);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+  .srv-mgmt-btn.edit{background:rgba(88,101,242,0.15);color:var(--accent2)}
+  .srv-mgmt-btn.edit:hover{background:rgba(88,101,242,0.3)}
+  .srv-mgmt-btn.danger{background:rgba(237,66,69,0.15);color:var(--red)}
+  .srv-mgmt-btn.danger:hover{background:rgba(237,66,69,0.3)}
+
+  /* Adjust layouts for server nav */
+  .sidebar{left:60px}
+  .app-header{left:calc(var(--sidebar-w) + 60px)}
+  .main-panel{left:calc(var(--sidebar-w) + 60px);right:220px}
+  .bottom-controls{left:calc(var(--sidebar-w) + 60px);right:220px}
+  .status-bar{left:60px;width:var(--sidebar-w)}
 </style>
 </head>
 <body>
@@ -433,11 +490,10 @@
       <div class="login-icon">🎙️</div>
       <div class="login-brand">OathlyVoice</div>
     </div>
-    <div class="modal-sub">Welcome back! Sign in or continue as guest</div>
+    <div class="modal-sub">Welcome back! Sign in to continue</div>
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchAuthTab('login')">Sign In</button>
       <button class="modal-tab" onclick="switchAuthTab('register')">Register</button>
-      <button class="modal-tab" onclick="switchAuthTab('guest')">Guest</button>
     </div>
 
     <!-- Login -->
@@ -457,13 +513,19 @@
       <button type="submit" class="btn-primary">Create Account</button>
     </form>
 
-    <!-- Guest -->
-    <form id="tab-guest" style="display:none" onsubmit="event.preventDefault(); doGuest();">
-      <div class="field"><label>Display Name</label><input type="text" id="guest-name" placeholder="Enter your name" maxlength="24"/></div>
-      <div class="modal-err" id="guest-err"></div>
-      <button type="submit" class="btn-primary">Join as Guest</button>
-      <p style="font-size:11px;color:var(--text-3);margin-top:12px;text-align:center">Settings won't be saved as a guest</p>
-    </form>
+  </div>
+</div>
+
+<!-- ═══ SERVER SELECT ═══ -->
+<div class="modal-overlay hidden" id="server-select-screen">
+  <div class="modal" style="max-width:560px">
+    <div class="login-logo" style="justify-content:center;margin-bottom:8px">
+      <div class="login-icon">🎙️</div>
+      <div class="login-brand">OathlyVoice</div>
+    </div>
+    <div class="modal-sub" id="server-select-sub">Select a server to join</div>
+    <div id="server-list" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto"></div>
+    <div class="modal-err" id="server-select-err"></div>
   </div>
 </div>
 
@@ -590,6 +652,14 @@
     </div>
     <div id="mgmt-user-list" class="mgmt-user-list"></div>
     <div class="modal-err" id="mgmt-err" style="margin-top:8px"></div>
+    <div class="srv-mgmt-section">
+      <div class="settings-section-title">Server Management</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="srv-new-name" placeholder="New server name" style="flex:1;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:8px;font-family:inherit;font-size:14px;outline:none;height:36px">
+        <button class="srv-mgmt-btn edit" onclick="ownerCreateServer()" style="padding:8px 14px">+ Create</button>
+      </div>
+      <div id="srv-mgmt-list"></div>
+    </div>
     <button class="btn-ghost" onclick="closeAdminManagement()" style="margin-top:12px">Close</button>
   </div>
 </div>
@@ -618,6 +688,7 @@
 
 <!-- ═══ APP ═══ -->
 <div id="app">
+  <nav class="server-nav" id="server-nav"></nav>
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -689,6 +760,11 @@
     <div class="status-dot connected" id="status-dot"></div>
     <span class="status-text" id="status-text">Connected</span>
   </div>
+
+  <aside class="right-sidebar" id="right-sidebar">
+    <div class="right-sidebar-title">Members</div>
+    <div id="right-member-list"></div>
+  </aside>
 </div>
 
 <!-- ═══ USER POPOVER ═══ -->
@@ -726,7 +802,6 @@ const socket = io({
 
 let myUsername    = '';
 let myPassword    = '';   // only set for registered users
-let isGuest       = true;
 let currentParty  = null;
 let isBroadcaster = false;
 let isMuted       = false;
@@ -738,6 +813,9 @@ let serverMutedMe = false;
 let localStream   = null;
 let partyData     = {};
 let amISpeaking   = false;
+let currentServerId = null;
+let serverPartyCount = 12;
+let serverMembers = [];
 
 // ── Latency tracking ──
 const peerLatency = {};   // socketId → latency in ms
@@ -796,11 +874,11 @@ function esc(str) {
 }
 
 function switchAuthTab(tab) {
-  ['login','register','guest'].forEach(t => {
+  ['login','register'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('.modal-tab').forEach((el, i) => {
-    el.classList.toggle('active', ['login','register','guest'][i] === tab);
+    el.classList.toggle('active', ['login','register'][i] === tab);
   });
 }
 
@@ -818,7 +896,6 @@ async function doLogin() {
     if (!data.ok) return setErr('login-err', data.error);
     myUsername = data.username;
     myPassword = password;
-    isGuest    = false;
     myRole     = data.role || 'user';
     applySettings(data.settings);
     enterApp();
@@ -844,20 +921,11 @@ async function doRegister() {
     if (!data.ok) return setErr('reg-err', data.error);
     myUsername = username;
     myPassword = password;
-    isGuest    = false;
     notify('Account created! Welcome, ' + username, 'success');
     enterApp();
   } catch (e) {
     setErr('reg-err', 'Could not reach server — try again');
   }
-}
-
-function doGuest() {
-  const name = document.getElementById('guest-name').value.trim();
-  if (!name) return setErr('guest-err', 'Enter a name');
-  myUsername = name;
-  isGuest    = true;
-  enterApp();
 }
 
 function setErr(id, msg) {
@@ -866,17 +934,16 @@ function setErr(id, msg) {
 
 function enterApp() {
   document.getElementById('auth-modal').classList.add('hidden');
-  document.getElementById('app').style.display = 'block';
+  document.getElementById('server-select-screen').classList.remove('hidden');
   document.getElementById('header-username').textContent = myUsername;
   document.getElementById('header-avatar').textContent   = myUsername[0].toUpperCase();
-  document.getElementById('settings-save-row').style.display = isGuest ? 'none' : 'block';
-  document.getElementById('settings-sub').textContent = isGuest
-    ? 'Guest — settings not saved'
-    : `Signed in as ${myUsername}`;
+  document.getElementById('settings-save-row').style.display = 'block';
+  document.getElementById('settings-sub').textContent = `Signed in as ${myUsername}`;
   socket.emit('join', { username: myUsername });
-  initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
+  initAudio();
   applySettingsUI();
   initPTTTouchButton();
+  loadServerList();
 }
 
 function applySettings(s) {
@@ -1114,7 +1181,7 @@ function startListeningPTT() {
 }
 
 async function saveSettings() {
-  if (isGuest || !myPassword) return;
+  if (!myPassword) return;
   try {
     const res = await fetch('/voice/api/save-settings', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2019,6 +2086,7 @@ function openAdminManagement() {
   document.getElementById('mgmt-search').value = '';
   document.getElementById('mgmt-err').textContent = '';
   doMgmtSearch('');
+  loadOwnerServerList();
   setTimeout(() => document.getElementById('mgmt-search').focus(), 100);
 }
 
@@ -2115,7 +2183,7 @@ function openBroadcastModal() {
   grid.innerHTML = '';
   grid.appendChild(allBtn);
 
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 1; i <= serverPartyCount; i++) {
     const count = (partyData[i] || []).length;
     const btn = document.createElement('button');
     btn.className = 'bc-party-btn' + (bcPartySelected.has(i) && !bcAllSelected ? ' selected' : '');
@@ -2323,7 +2391,7 @@ function closeSidebar() {
 function renderSidebar() {
   const list = document.getElementById('party-list');
   list.innerHTML = '';
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 1; i <= serverPartyCount; i++) {
     const members = partyData[i] || [];
     const count   = members.length;
     const active  = currentParty === i;
@@ -2455,7 +2523,7 @@ function renderMainPanel() {
 
   const members = partyData[currentParty] || [];
   const broadcasters = [];
-  for (let i = 1; i <= 12; i++) {
+  for (let i = 1; i <= serverPartyCount; i++) {
     (partyData[i]||[]).forEach(m => {
       if (m.isBroadcaster && m.socketId !== socket.id && !broadcasters.find(b=>b.socketId===m.socketId))
         broadcasters.push(m);
@@ -2552,10 +2620,20 @@ socket.on('connect', () => {
   document.getElementById('status-text').textContent = 'Connected';
   if (myUsername) {
     socket.emit('join', { username: myUsername });
-    if (currentParty) socket.emit('join-party', { partyId: currentParty });
-    if (isBroadcaster) socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
+    if (currentServerId) {
+      socket.emit('join-server', { serverId: currentServerId }, (res) => {
+        if (!res.ok) return;
+        serverPartyCount = res.partyCount || 12;
+        serverMembers = res.members || [];
+        partyData = {};
+        Object.entries(res.partyList).forEach(([id, m]) => partyData[parseInt(id)] = m);
+        renderSidebar();
+        renderRightSidebar();
+        if (currentParty) socket.emit('join-party', { partyId: currentParty });
+        if (isBroadcaster) socket.emit('set-broadcaster', { isBroadcaster: true, targets: bcTargets, paused: bcPaused });
+      });
+    }
     if (isAdmin) {
-      // On reconnect, role-based admins will get auto-granted via 'join' handler
       if (myRole !== 'admin' && myRole !== 'owner') {
         isAdmin = false;
         document.getElementById('broadcaster-toggle').style.display = 'none';
@@ -2571,10 +2649,8 @@ socket.on('disconnect', () => {
   document.getElementById('status-text').textContent = 'Disconnected…';
 });
 
-socket.on('init', ({ partyList }) => {
-  partyData = {};
-  Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
-  renderSidebar();
+socket.on('init', () => {
+  // Server selection happens after join
 });
 
 socket.on('party-update', (partyList) => {
@@ -2582,6 +2658,23 @@ socket.on('party-update', (partyList) => {
   Object.entries(partyList).forEach(([id,m]) => partyData[parseInt(id)] = m);
   renderSidebar();
   if (currentParty) renderMainPanel();
+});
+
+socket.on('server-members', ({ members }) => {
+  serverMembers = members;
+  renderRightSidebar();
+});
+
+socket.on('server-deleted', ({ serverId }) => {
+  if (serverId === currentServerId) {
+    currentServerId = null;
+    currentParty = null;
+    Object.keys(peerPlayers).forEach(removePeerPlayer);
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('server-select-screen').classList.remove('hidden');
+    loadServerList();
+    notify('Server was deleted', 'warn');
+  }
 });
 
 socket.on('party-peers',      () => renderMainPanel());
@@ -2816,6 +2909,8 @@ function logout() {
   if (audioCtx)    { try { audioCtx.close(); }    catch(e){} audioCtx    = null; }
   if (playbackCtx) { try { playbackCtx.close(); } catch(e){} playbackCtx = null; }
   Object.keys(peerPlayers).forEach(removePeerPlayer);
+  currentServerId = null;
+  currentParty = null;
   socket.disconnect();
   window.location.reload();
 }
@@ -2824,6 +2919,290 @@ document.addEventListener('touchstart', () => {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   if (playbackCtx && playbackCtx.state === 'suspended') playbackCtx.resume();
 }, { passive: true });
+
+// ── Server selection & navigation ──
+
+function loadServerList() {
+  socket.emit('get-servers', (res) => {
+    if (!res.ok) return;
+    const list = document.getElementById('server-list');
+    if (!res.servers.length) {
+      list.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:20px">No servers available</div>';
+      return;
+    }
+    list.innerHTML = '';
+    res.servers.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'server-list-item';
+      item.dataset.serverId = s.id;
+      const initial = s.name ? esc(s.name[0].toUpperCase()) : '?';
+      const lockBadge = s.requireMembership ? '<span class="server-list-badge locked">🔒 Members Only</span>' : '';
+      item.innerHTML = `<div class="server-list-icon">${initial}</div>
+        <div class="server-list-info">
+          <div class="server-list-name">${esc(s.name)}</div>
+          <div class="server-list-meta">${s.parties} parties · ${s.onlineCount} online</div>
+        </div>
+        <span class="server-list-badge online">${s.onlineCount} online</span>
+        ${lockBadge}`;
+      item.addEventListener('click', () => selectServer(s.id));
+      list.appendChild(item);
+    });
+  });
+}
+
+function selectServer(serverId) {
+  document.getElementById('server-select-err').textContent = '';
+  socket.emit('join-server', { serverId }, (res) => {
+    if (!res.ok) {
+      document.getElementById('server-select-err').textContent = res.error || 'Could not join server';
+      return;
+    }
+    currentServerId = serverId;
+    serverPartyCount = res.partyCount || 12;
+    serverMembers = res.members || [];
+
+    partyData = {};
+    Object.entries(res.partyList).forEach(([id, m]) => partyData[parseInt(id)] = m);
+
+    document.getElementById('server-select-screen').classList.add('hidden');
+    document.getElementById('app').style.display = 'block';
+
+    renderServerNav();
+    renderSidebar();
+    renderRightSidebar();
+    renderMainPanel();
+  });
+}
+
+function renderServerNav() {
+  socket.emit('get-servers', (res) => {
+    if (!res.ok) return;
+    const nav = document.getElementById('server-nav');
+    nav.innerHTML = '';
+    res.servers.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'server-nav-btn' + (s.id === currentServerId ? ' active' : '');
+      btn.title = s.name || '';
+      btn.textContent = s.name ? s.name[0].toUpperCase() : '?';
+      btn.onclick = () => switchServer(s.id);
+
+      const indicator = document.createElement('div');
+      indicator.className = 'server-nav-indicator';
+      indicator.style.height = s.id === currentServerId ? '36px' : '0px';
+      btn.appendChild(indicator);
+
+      nav.appendChild(btn);
+    });
+  });
+}
+
+function switchServer(serverId) {
+  if (serverId === currentServerId) return;
+  if (currentParty) {
+    Object.keys(peerPlayers).forEach(removePeerPlayer);
+    socket.emit('leave-party');
+    currentParty = null;
+    stopPingLoop();
+    Object.keys(peerLatency).forEach(k => delete peerLatency[k]);
+  }
+  socket.emit('join-server', { serverId }, (res) => {
+    if (!res.ok) {
+      notify(res.error || 'Could not join server', 'error');
+      return;
+    }
+    currentServerId = serverId;
+    serverPartyCount = res.partyCount || 12;
+    serverMembers = res.members || [];
+    partyData = {};
+    Object.entries(res.partyList).forEach(([id, m]) => partyData[parseInt(id)] = m);
+
+    renderServerNav();
+    renderSidebar();
+    renderRightSidebar();
+    renderMainPanel();
+  });
+}
+
+function renderRightSidebar() {
+  const sidebar = document.getElementById('right-sidebar');
+  const list = document.getElementById('right-member-list');
+  if (!currentServerId) { sidebar.style.display = 'none'; return; }
+  sidebar.style.display = '';
+
+  const online = serverMembers.filter(m => m.online);
+  const offline = serverMembers.filter(m => !m.online);
+
+  let html = '';
+  html += `<div class="right-sidebar-title">Online — ${online.length}</div>`;
+  online.forEach(m => {
+    const partyText = m.party ? `Party ${m.party}` : '';
+    html += `<div class="right-member-row">
+      <div class="right-member-dot online"></div>
+      <span class="right-member-name">${esc(m.username)}</span>
+      ${partyText ? `<span class="right-member-party">${partyText}</span>` : ''}
+    </div>`;
+  });
+  html += `<div class="right-sidebar-title" style="margin-top:8px">Offline — ${offline.length}</div>`;
+  offline.forEach(m => {
+    html += `<div class="right-member-row">
+      <div class="right-member-dot offline"></div>
+      <span class="right-member-name offline">${esc(m.username)}</span>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+// ── Owner server management ──
+
+function ownerCreateServer() {
+  const nameEl = document.getElementById('srv-new-name');
+  const name = nameEl.value.trim();
+  if (!name) return;
+  socket.emit('owner-create-server', { name, ownerCode }, (res) => {
+    if (!res.ok) return notify(res.error || 'Failed', 'error');
+    nameEl.value = '';
+    notify('Server created: ' + name, 'success');
+    loadOwnerServerList();
+    renderServerNav();
+  });
+}
+
+function loadOwnerServerList() {
+  socket.emit('get-servers', (res) => {
+    if (!res.ok) return;
+    const list = document.getElementById('srv-mgmt-list');
+    list.innerHTML = '';
+    res.servers.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'srv-mgmt-row';
+      row.id = 'srv-row-' + s.id;
+      row.innerHTML = `<span class="srv-name">${esc(s.name)}</span>
+        <span style="font-size:11px;color:var(--text-3)">${s.parties}p</span>
+        ${s.requireMembership ? '<span style="font-size:10px;color:#d4a017">🔒</span>' : ''}`;
+      const editBtn = document.createElement('button');
+      editBtn.className = 'srv-mgmt-btn edit';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', () => ownerEditServer(s.id));
+      const delBtn = document.createElement('button');
+      delBtn.className = 'srv-mgmt-btn danger';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', () => ownerDeleteServer(s.id, s.name));
+      row.appendChild(editBtn);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
+  });
+}
+
+function ownerEditServer(serverId) {
+  socket.emit('get-servers', (res) => {
+    if (!res.ok) return;
+    const srv = res.servers.find(s => s.id === serverId);
+    if (!srv) return;
+
+    const panel = document.createElement('div');
+    panel.id = 'srv-edit-panel';
+    panel.style.cssText = 'padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-top:8px';
+    panel.innerHTML = `<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Editing: ${esc(srv.name)}</div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Server Name</label>
+        <input type="text" id="srv-edit-name" value="${esc(srv.name)}" style="background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:8px;font-family:inherit;font-size:14px;outline:none;width:100%;height:36px">
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Number of Parties</label>
+        <input type="number" id="srv-edit-parties" value="${srv.parties}" min="1" max="50" style="background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:8px;font-family:inherit;font-size:14px;outline:none;width:100%;height:36px">
+      </div>
+      <div class="setting-row" style="margin-bottom:10px">
+        <div class="setting-label">Require Membership</div>
+        <label class="toggle"><input type="checkbox" id="srv-edit-membership" ${srv.requireMembership ? 'checked' : ''}><span class="toggle-slider"></span></label>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:12px;font-weight:700;letter-spacing:0.02em;color:var(--text-2);text-transform:uppercase;margin-bottom:6px">Members</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input type="text" id="srv-edit-add-member" placeholder="Username to add" style="flex:1;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:6px;font-family:inherit;font-size:13px;outline:none;height:32px">
+          <button class="srv-mgmt-btn edit" id="srv-edit-add-btn" style="padding:6px 10px">Add</button>
+        </div>
+        <div id="srv-edit-members" style="max-height:120px;overflow-y:auto"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" id="srv-edit-save-btn" style="flex:1;height:36px;line-height:36px">Save Changes</button>
+        <button class="btn-ghost" id="srv-edit-cancel-btn" style="flex:1;margin-top:0;height:36px;line-height:36px">Cancel</button>
+      </div>`;
+
+    const row = document.getElementById('srv-row-' + serverId);
+    if (row) row.replaceWith(panel);
+
+    // Populate member list with event listeners
+    const membersEl = panel.querySelector('#srv-edit-members');
+    srv.members.forEach(m => {
+      const mRow = document.createElement('div');
+      mRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:3px 6px;font-size:13px;color:var(--text-2)';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = m;
+      const rmBtn = document.createElement('button');
+      rmBtn.className = 'srv-mgmt-btn danger';
+      rmBtn.style.cssText = 'padding:2px 6px;font-size:10px';
+      rmBtn.textContent = '×';
+      rmBtn.addEventListener('click', () => ownerRemoveMember(serverId, m));
+      mRow.appendChild(nameSpan);
+      mRow.appendChild(rmBtn);
+      membersEl.appendChild(mRow);
+    });
+
+    panel.querySelector('#srv-edit-add-btn').addEventListener('click', () => ownerAddMember(serverId));
+    panel.querySelector('#srv-edit-save-btn').addEventListener('click', () => ownerSaveServer(serverId));
+    panel.querySelector('#srv-edit-cancel-btn').addEventListener('click', () => loadOwnerServerList());
+  });
+}
+
+function ownerSaveServer(serverId) {
+  const name = document.getElementById('srv-edit-name').value.trim();
+  const parties = parseInt(document.getElementById('srv-edit-parties').value);
+  const requireMembership = document.getElementById('srv-edit-membership').checked;
+
+  let pending = 3;
+  let hasError = false;
+  const done = (res) => {
+    if (res && !res.ok) hasError = true;
+    if (--pending <= 0) {
+      loadOwnerServerList();
+      renderServerNav();
+      notify(hasError ? 'Some changes may have failed' : 'Server updated', hasError ? 'warn' : 'success');
+    }
+  };
+
+  socket.emit('owner-rename-server', { serverId, name, ownerCode }, done);
+  socket.emit('owner-set-parties', { serverId, count: parties, ownerCode }, done);
+  socket.emit('owner-toggle-membership', { serverId, requireMembership, ownerCode }, done);
+}
+
+function ownerDeleteServer(serverId, name) {
+  if (!confirm('Delete server "' + name + '"? This cannot be undone.')) return;
+  socket.emit('owner-delete-server', { serverId, ownerCode }, (res) => {
+    if (!res.ok) return notify(res.error || 'Failed', 'error');
+    notify('Server deleted', 'success');
+    loadOwnerServerList();
+    renderServerNav();
+  });
+}
+
+function ownerAddMember(serverId) {
+  const input = document.getElementById('srv-edit-add-member');
+  const username = input.value.trim();
+  if (!username) return;
+  socket.emit('owner-add-member', { serverId, username, ownerCode }, (res) => {
+    if (!res.ok) return notify(res.error || 'Failed', 'error');
+    input.value = '';
+    ownerEditServer(serverId);
+  });
+}
+
+function ownerRemoveMember(serverId, username) {
+  socket.emit('owner-remove-member', { serverId, username, ownerCode }, (res) => {
+    if (!res.ok) return notify(res.error || 'Failed', 'error');
+    ownerEditServer(serverId);
+  });
+}
 </script>
 </body>
 </html>
