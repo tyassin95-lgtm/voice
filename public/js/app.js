@@ -4,7 +4,7 @@ import * as S from './state.js';
 import { socket } from './socket-client.js';
 import {
   switchAuthTab, doLogin, doRegister, doGuest,
-  openSettings, closeSettings, onSensChange, onInputVolChange,
+  openSettings, closeSettings, switchSettingsTab, onSensChange, onInputVolChange,
   onPttToggle, onNoiseCancelToggle, onPttTouchToggle,
   startListeningPTT, saveSettings,
   onMuteKeybindToggle, startListeningMuteKey,
@@ -30,6 +30,7 @@ window.doRegister           = doRegister;
 window.doGuest              = doGuest;
 window.openSettings         = openSettings;
 window.closeSettings        = closeSettings;
+window.switchSettingsTab    = switchSettingsTab;
 window.onSensChange         = onSensChange;
 window.onInputVolChange     = onInputVolChange;
 window.onPttToggle          = onPttToggle;

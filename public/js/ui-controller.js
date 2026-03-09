@@ -5,6 +5,9 @@ import { socket, startPingLoop, stopPingLoop } from './socket-client.js';
 import { esc, setErr, notify, playSound, latencyClass } from './utils.js';
 import { initAudio, removePeerPlayer, switchMicrophone, initVAD } from './audio-engine.js';
 
+// Validate hex color format for safe inline style use
+function safeColor(c) { return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#5865f2'; }
+
 // ── Auth tab switching ──
 export function switchAuthTab(tab) {
   ['login','register','guest'].forEach(t => {
@@ -128,6 +131,17 @@ export function openSettings() {
 }
 export function closeSettings() {
   document.getElementById('settings-modal').classList.add('hidden');
+}
+
+export function switchSettingsTab(tabId) {
+  const validTabs = ['voice-video', 'app-settings', 'user-profile'];
+  if (!validTabs.includes(tabId)) return;
+  document.querySelectorAll('.settings-tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.settings-tab').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById('tab-' + tabId);
+  if (target) target.style.display = '';
+  const btn = document.querySelector(`.settings-tab[data-settings-tab="${tabId}"]`);
+  if (btn) btn.classList.add('active');
 }
 
 export function onSensChange(val) {
@@ -701,8 +715,19 @@ export function openPopover(sid, event) {
   if (!member) return;
   S.setPopoverTarget(sid);
 
-  document.getElementById('pop-avatar').textContent = member.username[0].toUpperCase();
+  const popAvatar = document.getElementById('pop-avatar');
+  if (member.avatarUrl) {
+    popAvatar.innerHTML = `<img src="${esc(member.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`;
+  } else {
+    popAvatar.innerHTML = '';
+    popAvatar.textContent = member.username[0].toUpperCase();
+  }
   document.getElementById('pop-name').textContent   = member.username;
+
+  const pop  = document.getElementById('popover');
+
+  // Apply the user's banner color as popover top accent
+  pop.style.borderTop = `3px solid ${safeColor(member.bannerColor)}`;
 
   const vol = S.localVolume[sid] ?? 100;
   document.getElementById('pop-vol-slider').value      = vol;
@@ -726,7 +751,6 @@ export function openPopover(sid, event) {
     document.getElementById('pop-servermute-btn').classList.toggle('is-active', srvMuted);
   }
 
-  const pop  = document.getElementById('popover');
   const card = document.getElementById(`card-${sid}`);
   const rect = card.getBoundingClientRect();
   pop.style.display = 'block';
@@ -979,11 +1003,17 @@ function memberCardHTML(m, isMe) {
   const srvMuted   = m.serverMuted || false;
   const lat        = isMe ? S.myLatency : S.peerLatency[m.socketId];
   const latCls     = latencyClass(lat);
+  const avatarUrl  = isMe ? S.myAvatarUrl : (m.avatarUrl || '');
+  const avatarContent = avatarUrl
+    ? `<img src="${esc(avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
+    : esc((m.username || '?')[0].toUpperCase());
+  const bannerColor = safeColor(isMe ? S.myBannerColor : (m.bannerColor || '#5865f2'));
 
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
     id="card-${m.socketId}"
+    style="border-top:3px solid ${bannerColor}"
     ${!isMe?`onclick="window._openPopover('${m.socketId}',event)"`:''}>
-    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${esc((m.username || '?')[0].toUpperCase())}</div>
+    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${avatarContent}</div>
     <div class="member-name">${esc(m.username)}</div>
     ${isMe?'<div class="member-you">· you</div>':''}
     <div class="member-tags">
@@ -1198,6 +1228,7 @@ export async function saveProfile() {
     S.setMyBio(data.bio);
     S.setMyBannerColor(data.bannerColor);
     S.setMyCustomStatus(data.customStatus);
+    socket.emit('update-profile', { avatarUrl: S.myAvatarUrl, bannerColor: data.bannerColor, bio: data.bio });
     notify('Profile saved ✓', 'success');
   } catch (e) {
     notify('Could not reach server', 'error');
@@ -1219,6 +1250,7 @@ export async function onAvatarFileSelected() {
     if (!data.ok) return notify(data.error || 'Upload failed', 'error');
     S.setMyAvatarUrl(data.avatarUrl);
     updateAvatarPreview();
+    socket.emit('update-profile', { avatarUrl: data.avatarUrl, bannerColor: S.myBannerColor, bio: S.myBio });
     notify('Avatar uploaded ✓', 'success');
   } catch (e) {
     notify('Could not reach server', 'error');
@@ -1239,7 +1271,14 @@ function updateAvatarPreview() {
 
 export function initProfileSettingsUI() {
   const section = document.getElementById('profile-settings-section');
-  if (section) section.style.display = S.isGuest ? 'none' : 'block';
+  const guestNotice = document.getElementById('profile-guest-notice');
+  if (S.isGuest) {
+    if (section) section.style.display = 'none';
+    if (guestNotice) guestNotice.style.display = 'block';
+  } else {
+    if (section) section.style.display = 'block';
+    if (guestNotice) guestNotice.style.display = 'none';
+  }
   document.getElementById('profile-bio-input').value     = S.myBio || '';
   document.getElementById('profile-status-input').value  = S.myCustomStatus || '';
   document.getElementById('profile-banner-color').value  = S.myBannerColor || '#5865f2';
