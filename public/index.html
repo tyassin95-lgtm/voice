@@ -889,11 +889,10 @@
 
 <div id="notifications"></div>
 
-<script src="/voice/socket.io/socket.io.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io({
   transports: ['websocket', 'polling'],
-  path: '/voice/socket.io',
   perMessageDeflate: false
 });
 
@@ -3283,9 +3282,9 @@ async function submitChannelPassword() {
       document.getElementById('ch-pw-err').textContent = data.error || 'Incorrect password';
       return;
     }
+    const joinInfo = { serverId: pendingChannelJoin.serverId, channelId: pendingChannelJoin.channelId };
     closeChannelPasswordModal();
-    doJoinChannel(pendingChannelJoin.serverId, pendingChannelJoin.channelId);
-    pendingChannelJoin = null;
+    doJoinChannel(joinInfo.serverId, joinInfo.channelId);
   } catch(e) { document.getElementById('ch-pw-err').textContent = 'Error verifying password'; }
 }
 
