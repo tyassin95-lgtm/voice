@@ -16,6 +16,13 @@ export let localStream   = null;
 export let partyData     = {};
 export let amISpeaking   = false;
 
+// ── Profile state ──
+export let myAvatarUrl    = '';
+export let myBannerColor  = '#5865f2';
+export let myBio          = '';
+export let myCustomStatus = '';
+export let memberList     = [];  // all registered users from server
+
 // ── Latency tracking ──
 export const peerLatency = {};   // socketId → latency in ms
 export let myLatency     = null; // own latency in ms
@@ -106,6 +113,11 @@ export function setServerMutedMe(v) { serverMutedMe = v; }
 export function setLocalStream(v)   { localStream = v; }
 export function setPartyData(v)     { partyData = v; }
 export function setAmISpeaking(v)   { amISpeaking = v; }
+export function setMyAvatarUrl(v)   { myAvatarUrl = v; }
+export function setMyBannerColor(v) { myBannerColor = v; }
+export function setMyBio(v)         { myBio = v; }
+export function setMyCustomStatus(v){ myCustomStatus = v; }
+export function setMemberList(v)    { memberList = v; }
 export function setMyLatency(v)     { myLatency = v; }
 export function setPingInterval(v)  { pingInterval = v; }
 export function setSettings(v)      { settings = v; }

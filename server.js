@@ -3,7 +3,8 @@ const http    = require('http');
 const { Server } = require('socket.io');
 const path    = require('path');
 
-const apiRoutes = require('./src/routes/api');
+const apiRoutes     = require('./src/routes/api');
+const profileRoutes = require('./src/routes/profile');
 const { registerSocketHandlers } = require('./src/socket/socketHandler');
 
 const app    = express();
@@ -24,6 +25,7 @@ app.get('/voice', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'in
 
 // REST API routes
 app.use('/voice/api', apiRoutes);
+app.use('/voice/api', profileRoutes);
 
 // Socket.IO handlers
 registerSocketHandlers(io);

@@ -5,7 +5,7 @@ import { notify } from './utils.js';
 import { handleAudioFrom, removePeerPlayer } from './audio-engine.js';
 import {
   renderSidebar, renderMainPanel, updateMyCard, updateRoleBadge,
-  updateLatencyDisplay, updateBcPauseBtn
+  updateLatencyDisplay, updateBcPauseBtn, renderMemberSidebar
 } from './ui-controller.js';
 import { playSound } from './utils.js';
 
@@ -94,10 +94,11 @@ socket.on('disconnect', () => {
   document.getElementById('status-text').textContent = 'Disconnected…';
 });
 
-socket.on('init', ({ partyList }) => {
+socket.on('init', ({ partyList, memberList }) => {
   const pd = {};
   Object.entries(partyList).forEach(([id,m]) => pd[parseInt(id)] = m);
   S.setPartyData(pd);
+  if (memberList) { S.setMemberList(memberList); renderMemberSidebar(); }
   renderSidebar();
 });
 
@@ -107,6 +108,11 @@ socket.on('party-update', (partyList) => {
   S.setPartyData(pd);
   renderSidebar();
   if (S.currentParty) renderMainPanel();
+});
+
+socket.on('member-list', (memberList) => {
+  S.setMemberList(memberList);
+  renderMemberSidebar();
 });
 
 socket.on('party-peers',      () => renderMainPanel());

@@ -32,6 +32,10 @@ export async function doLogin() {
     S.setMyPassword(password);
     S.setIsGuest(false);
     S.setMyRole(data.role || 'user');
+    S.setMyAvatarUrl(data.avatarUrl || '');
+    S.setMyBannerColor(data.bannerColor || '#5865f2');
+    S.setMyBio(data.bio || '');
+    S.setMyCustomStatus(data.customStatus || '');
     applySettings(data.settings);
     enterApp();
   } catch (e) {
@@ -85,6 +89,7 @@ export function enterApp() {
   initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
   applySettingsUI();
   initPTTTouchButton();
+  initProfileSettingsUI();
 }
 
 export function applySettings(s) {
@@ -1099,4 +1104,148 @@ export function logout() {
   Object.keys(S.peerPlayers).forEach(removePeerPlayer);
   socket.disconnect();
   window.location.reload();
+}
+
+// ── Member Sidebar (right) ──
+export function renderMemberSidebar() {
+  const list = document.getElementById('member-sidebar-list');
+  if (!list) return;
+
+  const online  = S.memberList.filter(u => u.online).sort((a,b) => a.username.localeCompare(b.username));
+  const offline = S.memberList.filter(u => !u.online).sort((a,b) => a.username.localeCompare(b.username));
+
+  let html = '';
+  if (online.length) {
+    html += `<div class="msb-category">Online — ${online.length}</div>`;
+    online.forEach(u => { html += msbUserHTML(u, true); });
+  }
+  if (offline.length) {
+    html += `<div class="msb-category">Offline — ${offline.length}</div>`;
+    offline.forEach(u => { html += msbUserHTML(u, false); });
+  }
+  list.innerHTML = html;
+
+  list.querySelectorAll('[data-msb-user]').forEach(el => {
+    el.addEventListener('click', () => openProfileModal(el.getAttribute('data-msb-user')));
+  });
+}
+
+function msbUserHTML(u, isOnline) {
+  const avatarContent = u.avatarUrl
+    ? `<img src="${esc(u.avatarUrl)}" alt="">`
+    : esc((u.username || '?')[0].toUpperCase());
+  const avatarStyle = u.avatarUrl ? `background-image:url('${esc(u.avatarUrl)}')` : '';
+  return `<div class="msb-user${isOnline ? ' is-online' : ''}" data-msb-user="${esc(u.username)}">
+    <div class="msb-user-avatar" ${avatarStyle ? `style="${avatarStyle}"` : ''}>
+      ${u.avatarUrl ? '' : avatarContent}
+      <span class="msb-status-dot ${isOnline ? 'online' : 'offline'}"></span>
+    </div>
+    <div class="msb-user-info">
+      <div class="msb-user-name">${esc(u.username)}</div>
+      ${u.customStatus ? `<div class="msb-user-status">${esc(u.customStatus)}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── Profile Modal (glassmorphism) ──
+export function openProfileModal(username) {
+  const user = S.memberList.find(u => u.username === username);
+  if (!user) return;
+
+  document.getElementById('profile-banner').style.background = user.bannerColor || '#5865f2';
+
+  const avatarEl = document.getElementById('profile-avatar');
+  if (user.avatarUrl) {
+    avatarEl.innerHTML = `<img src="${esc(user.avatarUrl)}" alt="">`;
+    avatarEl.style.backgroundImage = `url('${esc(user.avatarUrl)}')`;
+  } else {
+    avatarEl.innerHTML = esc((user.username || '?')[0].toUpperCase());
+    avatarEl.style.backgroundImage = '';
+  }
+
+  const ring = document.getElementById('profile-status-ring');
+  ring.className = 'profile-status-ring ' + (user.online ? 'online' : 'offline');
+
+  document.getElementById('profile-username').textContent = user.username;
+  document.getElementById('profile-custom-status').textContent = user.customStatus || '';
+
+  const roleBadge = document.getElementById('profile-role-badge');
+  roleBadge.className = 'profile-role-badge role-' + (user.role || 'user');
+  roleBadge.textContent = (user.role === 'admin' || user.role === 'owner') ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '';
+
+  document.getElementById('profile-bio').textContent = user.bio || 'No bio set.';
+  document.getElementById('profile-modal').classList.remove('hidden');
+}
+
+export function closeProfileModal() {
+  document.getElementById('profile-modal').classList.add('hidden');
+}
+
+// ── Profile Customization (settings tab) ──
+export async function saveProfile() {
+  if (S.isGuest || !S.myPassword) return notify('Sign in to save profile', 'error');
+  const bio          = document.getElementById('profile-bio-input').value;
+  const bannerColor  = document.getElementById('profile-banner-color').value;
+  const customStatus = document.getElementById('profile-status-input').value;
+  try {
+    const res = await fetch('/voice/api/update-profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, bio, bannerColor, customStatus })
+    });
+    if (!res.ok) return notify('Could not save profile', 'error');
+    const data = await res.json();
+    if (!data.ok) return notify(data.error || 'Could not save profile', 'error');
+    S.setMyBio(data.bio);
+    S.setMyBannerColor(data.bannerColor);
+    S.setMyCustomStatus(data.customStatus);
+    notify('Profile saved ✓', 'success');
+  } catch (e) {
+    notify('Could not reach server', 'error');
+  }
+}
+
+export async function onAvatarFileSelected() {
+  if (S.isGuest || !S.myPassword) return notify('Sign in to upload avatar', 'error');
+  const fileInput = document.getElementById('avatar-file-input');
+  if (!fileInput.files.length) return;
+  const formData = new FormData();
+  formData.append('avatar', fileInput.files[0]);
+  formData.append('username', S.myUsername);
+  formData.append('password', S.myPassword);
+  try {
+    const res = await fetch('/voice/api/upload-avatar', { method: 'POST', body: formData });
+    if (!res.ok) return notify('Upload failed', 'error');
+    const data = await res.json();
+    if (!data.ok) return notify(data.error || 'Upload failed', 'error');
+    S.setMyAvatarUrl(data.avatarUrl);
+    updateAvatarPreview();
+    notify('Avatar uploaded ✓', 'success');
+  } catch (e) {
+    notify('Could not reach server', 'error');
+  }
+}
+
+function updateAvatarPreview() {
+  const preview = document.getElementById('settings-avatar-preview');
+  if (!preview) return;
+  if (S.myAvatarUrl) {
+    preview.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt="">`;
+    preview.style.backgroundImage = `url('${esc(S.myAvatarUrl)}')`;
+  } else {
+    preview.innerHTML = esc((S.myUsername || '?')[0].toUpperCase());
+    preview.style.backgroundImage = '';
+  }
+}
+
+export function initProfileSettingsUI() {
+  const section = document.getElementById('profile-settings-section');
+  if (section) section.style.display = S.isGuest ? 'none' : 'block';
+  document.getElementById('profile-bio-input').value     = S.myBio || '';
+  document.getElementById('profile-status-input').value  = S.myCustomStatus || '';
+  document.getElementById('profile-banner-color').value  = S.myBannerColor || '#5865f2';
+  document.getElementById('profile-banner-color-label').textContent = S.myBannerColor || '#5865f2';
+  document.getElementById('profile-banner-color').addEventListener('input', function() {
+    document.getElementById('profile-banner-color-label').textContent = this.value;
+  });
+  updateAvatarPreview();
 }

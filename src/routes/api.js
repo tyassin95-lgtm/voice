@@ -19,7 +19,7 @@ router.post('/login', (req, res) => {
   const accounts = loadAccounts();
   const acc = accounts[username?.toLowerCase()];
   if (!acc || acc.password !== password) return res.json({ ok: false, error: 'Invalid credentials' });
-  res.json({ ok: true, username: acc.username, role: acc.role || 'user', settings: acc.settings });
+  res.json({ ok: true, username: acc.username, role: acc.role || 'user', settings: acc.settings, avatarUrl: acc.avatarUrl || '', bannerColor: acc.bannerColor || '#5865f2', bio: acc.bio || '', customStatus: acc.customStatus || '' });
 });
 
 router.post('/save-settings', (req, res) => {

@@ -17,7 +17,8 @@ import {
   openPopover, closePopover, onVolSlider, toggleLocalMute,
   adminServerMute, adminKick,
   toggleSidebar, closeSidebar, leaveParty, logout,
-  onInputDeviceChange, onOutputDeviceChange, populateDeviceList
+  onInputDeviceChange, onOutputDeviceChange, populateDeviceList,
+  openProfileModal, closeProfileModal, saveProfile, onAvatarFileSelected
 } from './ui-controller.js';
 import { playSound } from './utils.js';
 
@@ -64,6 +65,10 @@ window.leaveParty           = leaveParty;
 window.logout               = logout;
 window.onInputDeviceChange  = onInputDeviceChange;
 window.onOutputDeviceChange = onOutputDeviceChange;
+window.openProfileModal     = openProfileModal;
+window.closeProfileModal    = closeProfileModal;
+window.saveProfile          = saveProfile;
+window.onAvatarFileSelected = onAvatarFileSelected;
 
 // ── Keyboard event handlers ──
 document.addEventListener('keydown', e => {

@@ -146,6 +146,36 @@
     <div id="settings-save-row" style="display:none;margin-top:8px">
       <button class="btn-primary" onclick="saveSettings()">Save to Account</button>
     </div>
+
+    <!-- ═══ PROFILE CUSTOMIZATION SECTION ═══ -->
+    <div class="settings-section" id="profile-settings-section" style="display:none">
+      <div class="settings-section-title">Profile</div>
+      <div class="field">
+        <label>Avatar</label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="profile-settings-avatar" id="settings-avatar-preview"></div>
+          <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarFileSelected()">
+          <button class="ptt-key-btn" onclick="document.getElementById('avatar-file-input').click()">Upload Avatar</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Custom Status</label>
+        <input type="text" id="profile-status-input" placeholder="What are you up to?" maxlength="60"/>
+      </div>
+      <div class="field">
+        <label>Bio</label>
+        <textarea id="profile-bio-input" placeholder="Tell us about yourself…" maxlength="190" rows="3" style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea>
+      </div>
+      <div class="field">
+        <label>Banner Color</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="color" id="profile-banner-color" value="#5865f2" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+          <span id="profile-banner-color-label" style="font-size:13px;color:var(--text-3)">#5865f2</span>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
+    </div>
+
     <button class="btn-ghost" onclick="closeSettings()">Close</button>
     <button class="btn-ghost" onclick="logout()" style="margin-top:6px;border-color:var(--red);color:var(--red);opacity:0.7" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">Sign Out</button>
   </div>
@@ -249,6 +279,12 @@
     <div id="party-view" style="display:none"></div>
   </main>
 
+  <!-- ═══ RIGHT MEMBER SIDEBAR ═══ -->
+  <aside class="member-sidebar" id="member-sidebar">
+    <div class="member-sidebar-header">Members</div>
+    <div class="member-sidebar-list" id="member-sidebar-list"></div>
+  </aside>
+
   <div id="ptt-indicator">🎙 Transmitting…</div>
   <button id="ptt-touch-btn" aria-label="Push to Talk"></button>
 
@@ -278,6 +314,26 @@
   <div class="status-bar">
     <div class="status-dot connected" id="status-dot"></div>
     <span class="status-text" id="status-text">Connected</span>
+  </div>
+</div>
+
+<!-- ═══ PROFILE MODAL (Glassmorphism) ═══ -->
+<div class="modal-overlay hidden" id="profile-modal" onclick="if(event.target===this)closeProfileModal()">
+  <div class="profile-modal-card">
+    <div class="profile-banner" id="profile-banner"></div>
+    <div class="profile-avatar-wrap">
+      <div class="profile-avatar" id="profile-avatar"></div>
+      <span class="profile-status-ring" id="profile-status-ring"></span>
+    </div>
+    <div class="profile-body">
+      <div class="profile-username" id="profile-username"></div>
+      <div class="profile-custom-status" id="profile-custom-status"></div>
+      <div class="profile-role-badge" id="profile-role-badge"></div>
+      <hr class="profile-divider">
+      <div class="profile-section-title">ABOUT ME</div>
+      <div class="profile-bio" id="profile-bio">No bio set.</div>
+    </div>
+    <button class="btn-ghost" onclick="closeProfileModal()" style="margin:0 16px 12px;width:calc(100% - 32px)">Close</button>
   </div>
 </div>
 
