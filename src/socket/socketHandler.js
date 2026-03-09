@@ -3,9 +3,28 @@ const { users, parties, serializeUser, getPartyList } = require('../state');
 const { loadAccounts, saveAccounts } = require('../services/accountService');
 
 function registerSocketHandlers(io) {
+
+  // Helper: build a member list of ALL registered users with online status
+  function getMemberList() {
+    const accounts = loadAccounts();
+    const onlineUsernames = new Set();
+    for (const u of Object.values(users)) {
+      if (u.username) onlineUsernames.add(u.username.toLowerCase());
+    }
+    return Object.values(accounts).map(acc => ({
+      username:     acc.username,
+      role:         acc.role || 'user',
+      avatarUrl:    acc.avatarUrl || '',
+      bannerColor:  acc.bannerColor || '#5865f2',
+      bio:          acc.bio || '',
+      customStatus: acc.customStatus || '',
+      online:       onlineUsernames.has(acc.username.toLowerCase())
+    }));
+  }
+
   io.on('connection', (socket) => {
     console.log('Connected:', socket.id);
-    socket.emit('init', { partyList: getPartyList() });
+    socket.emit('init', { partyList: getPartyList(), memberList: getMemberList() });
 
     socket.on('join', ({ username }) => {
       // Look up persistent role from accounts
@@ -16,6 +35,7 @@ function registerSocketHandlers(io) {
       users[socket.id] = { username, party: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role };
       console.log(`${username} joined (role: ${role}${autoAdmin ? ', auto-admin' : ''})`);
       io.emit('party-update', getPartyList());
+      io.emit('member-list', getMemberList());
       // Notify the client of their role-based admin status
       if (autoAdmin) socket.emit('role-admin-granted', { role });
     });
@@ -299,6 +319,7 @@ function registerSocketHandlers(io) {
         if (user.isBroadcaster) io.emit('broadcaster-left', { socketId: socket.id });
         delete users[socket.id];
         io.emit('party-update', getPartyList());
+        io.emit('member-list', getMemberList());
       }
       console.log('Disconnected:', socket.id);
     });

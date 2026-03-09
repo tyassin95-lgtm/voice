@@ -3,3 +3,5 @@ package-lock.json
 servers.json
 server_icons/
 profile_images/
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep
