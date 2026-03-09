@@ -37,8 +37,8 @@
       "inputVolume": 100
     }
   },
-  "jimmydarkて": {
-    "username": "JimmyDarkて",
+  "jimmydark\u3066": {
+    "username": "JimmyDark\u3066",
     "password": "testing69",
     "settings": {
       "micSensitivity": 1,
@@ -289,24 +289,5 @@
       "pttKey": "Space",
       "inputVolume": 100
     }
-  },
-  "testprofile": {
-    "username": "TestProfile",
-    "password": "test1234",
-    "role": "user",
-    "settings": {
-      "micSensitivity": 50,
-      "pushToTalk": false,
-      "pttKey": "Space",
-      "pttTouch": false,
-      "muteKeybind": false,
-      "muteKey": "KeyM",
-      "bcPauseKeybind": false,
-      "bcPauseKey": "KeyB",
-      "inputVolume": 100
-    },
-    "bio": "Hello world!",
-    "bannerColor": "#ff5733",
-    "customStatus": "Testing profiles"
   }
 }

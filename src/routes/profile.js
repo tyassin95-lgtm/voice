@@ -17,9 +17,11 @@ const storage = multer.diskStorage({
   }
 });
 
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
+
 const upload = multer({
   storage,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+  limits: { fileSize: MAX_AVATAR_BYTES },
   fileFilter: (_req, file, cb) => {
     const allowed = /\.(jpe?g|png|gif|webp)$/i;
     if (allowed.test(path.extname(file.originalname))) return cb(null, true);
