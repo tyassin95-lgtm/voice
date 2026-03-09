@@ -44,9 +44,12 @@ function registerSocketHandlers(io) {
     socket.on('update-profile', ({ avatarUrl, bannerColor, bio }) => {
       const user = users[socket.id];
       if (!user) return;
-      if (avatarUrl !== undefined)   user.avatarUrl   = avatarUrl;
-      if (bannerColor !== undefined) user.bannerColor = bannerColor;
-      if (bio !== undefined)         user.bio         = bio;
+      if (avatarUrl !== undefined && typeof avatarUrl === 'string')
+        user.avatarUrl = avatarUrl.slice(0, 300);
+      if (bannerColor !== undefined && typeof bannerColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(bannerColor))
+        user.bannerColor = bannerColor;
+      if (bio !== undefined && typeof bio === 'string')
+        user.bio = bio.slice(0, 190);
       io.emit('party-update', getPartyList());
       io.emit('member-list', getMemberList());
     });

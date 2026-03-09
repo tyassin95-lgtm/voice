@@ -5,6 +5,9 @@ import { socket, startPingLoop, stopPingLoop } from './socket-client.js';
 import { esc, setErr, notify, playSound, latencyClass } from './utils.js';
 import { initAudio, removePeerPlayer, switchMicrophone, initVAD } from './audio-engine.js';
 
+// Validate hex color format for safe inline style use
+function safeColor(c) { return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#5865f2'; }
+
 // ── Auth tab switching ──
 export function switchAuthTab(tab) {
   ['login','register','guest'].forEach(t => {
@@ -131,6 +134,8 @@ export function closeSettings() {
 }
 
 export function switchSettingsTab(tabId) {
+  const validTabs = ['voice-video', 'app-settings', 'user-profile'];
+  if (!validTabs.includes(tabId)) return;
   document.querySelectorAll('.settings-tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.settings-tab').forEach(el => el.classList.remove('active'));
   const target = document.getElementById('tab-' + tabId);
@@ -722,7 +727,7 @@ export function openPopover(sid, event) {
   const pop  = document.getElementById('popover');
 
   // Apply the user's banner color as popover top accent
-  pop.style.borderTop = `3px solid ${member.bannerColor || '#5865f2'}`;
+  pop.style.borderTop = `3px solid ${safeColor(member.bannerColor)}`;
 
   const vol = S.localVolume[sid] ?? 100;
   document.getElementById('pop-vol-slider').value      = vol;
@@ -1002,7 +1007,7 @@ function memberCardHTML(m, isMe) {
   const avatarContent = avatarUrl
     ? `<img src="${esc(avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
     : esc((m.username || '?')[0].toUpperCase());
-  const bannerColor = isMe ? S.myBannerColor : (m.bannerColor || '#5865f2');
+  const bannerColor = safeColor(isMe ? S.myBannerColor : (m.bannerColor || '#5865f2'));
 
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
     id="card-${m.socketId}"
