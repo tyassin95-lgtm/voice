@@ -14,7 +14,8 @@ const io     = new Server(server, {
   pingTimeout:  60000,
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
-  perMessageDeflate: false
+  perMessageDeflate: false,
+  path: '/voice/socket.io'
 });
 
 app.use(express.json());
