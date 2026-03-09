@@ -32,12 +32,23 @@ function registerSocketHandlers(io) {
       const acc = accounts[username?.toLowerCase()];
       const role = acc?.role || 'user';
       const autoAdmin = role === 'admin' || role === 'owner';
-      users[socket.id] = { username, party: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role };
+      users[socket.id] = { username, party: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role, avatarUrl: acc?.avatarUrl || '', bannerColor: acc?.bannerColor || '#5865f2', bio: acc?.bio || '' };
       console.log(`${username} joined (role: ${role}${autoAdmin ? ', auto-admin' : ''})`);
       io.emit('party-update', getPartyList());
       io.emit('member-list', getMemberList());
       // Notify the client of their role-based admin status
       if (autoAdmin) socket.emit('role-admin-granted', { role });
+    });
+
+    // ── User: update profile in real-time ──
+    socket.on('update-profile', ({ avatarUrl, bannerColor, bio }) => {
+      const user = users[socket.id];
+      if (!user) return;
+      if (avatarUrl !== undefined)   user.avatarUrl   = avatarUrl;
+      if (bannerColor !== undefined) user.bannerColor = bannerColor;
+      if (bio !== undefined)         user.bio         = bio;
+      io.emit('party-update', getPartyList());
+      io.emit('member-list', getMemberList());
     });
 
     socket.on('join-party', ({ partyId }) => {

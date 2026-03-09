@@ -16,7 +16,10 @@ function serializeUser(sid) {
     isAdmin:          u?.isAdmin           || false,
     serverMuted:      u?.serverMuted       || false,
     selfMuted:        u?.selfMuted         || false,
-    selfDeafened:     u?.selfDeafened       || false
+    selfDeafened:     u?.selfDeafened       || false,
+    avatarUrl:        u?.avatarUrl         || '',
+    bannerColor:      u?.bannerColor       || '#5865f2',
+    bio:              u?.bio               || ''
   };
 }
 

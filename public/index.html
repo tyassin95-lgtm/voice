@@ -59,121 +59,129 @@
 
 <!-- ═══ SETTINGS MODAL ═══ -->
 <div class="modal-overlay hidden" id="settings-modal">
-  <div class="modal">
+  <div class="modal settings-modal-wide">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div class="modal-title">Settings</div>
       <button onclick="closeSettings()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
     </div>
     <div class="modal-sub" id="settings-sub">Adjustments are applied live</div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">Audio Devices</div>
-      <div class="field" style="margin-bottom:14px">
-        <label>Input Device</label>
-        <select class="device-select" id="input-device-select" onchange="onInputDeviceChange()">
-          <option value="">System Default</option>
-        </select>
+    <div class="settings-layout">
+      <div class="settings-sidebar">
+        <button class="settings-tab active" data-settings-tab="voice-video" onclick="switchSettingsTab('voice-video')">Voice &amp; Video</button>
+        <button class="settings-tab" data-settings-tab="app-settings" onclick="switchSettingsTab('app-settings')">App Settings</button>
+        <button class="settings-tab" data-settings-tab="user-profile" onclick="switchSettingsTab('user-profile')">User Profile</button>
       </div>
-      <div class="field" style="margin-bottom:0">
-        <label>Output Device</label>
-        <select class="device-select" id="output-device-select" onchange="onOutputDeviceChange()">
-          <option value="">System Default</option>
-        </select>
-      </div>
-    </div>
+      <div class="settings-content">
+        <!-- ═══ VOICE & VIDEO TAB ═══ -->
+        <div class="settings-section settings-tab-content" id="tab-voice-video">
+          <div class="settings-section-title">Audio Devices</div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Input Device</label>
+            <select class="device-select" id="input-device-select" onchange="onInputDeviceChange()">
+              <option value="">System Default</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Output Device</label>
+            <select class="device-select" id="output-device-select" onchange="onOutputDeviceChange()">
+              <option value="">System Default</option>
+            </select>
+          </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">Microphone</div>
+          <div class="settings-section-title" style="margin-top:20px">Microphone</div>
+          <div class="slider-row">
+            <div class="slider-header"><span>Mic sensitivity</span><span class="slider-val" id="sens-val">50</span></div>
+            <input type="range" class="range-input" id="sens-slider" min="1" max="100" value="50" oninput="onSensChange(this.value)">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px"><span>Strict</span><span id="sens-mode" style="color:var(--accent2);font-weight:600">Normal</span><span>Sensitive</span></div>
+          </div>
+          <div id="sens-hint" style="font-size:11px;color:var(--text-3);margin-top:2px;margin-bottom:10px;line-height:1.4;padding:6px 8px;background:var(--bg2);border-radius:var(--radius-sm)">
+            If your mic picks up too much background noise, move the slider toward <strong style="color:var(--text-2)">Strict</strong>.
+          </div>
+          <div class="slider-row">
+            <div class="slider-header"><span>Input volume boost</span><span class="slider-val" id="invol-val">100%</span></div>
+            <input type="range" class="range-input" id="invol-slider" min="50" max="300" value="100" oninput="onInputVolChange(this.value)">
+          </div>
+          <div class="setting-row" style="margin-top:8px">
+            <div class="setting-label">Noise Cancelation<small>Removes background noise from your mic</small></div>
+            <label class="toggle"><input type="checkbox" id="toggle-noise-cancel" checked onchange="onNoiseCancelToggle()"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
 
-      <div class="slider-row">
-        <div class="slider-header"><span>Mic sensitivity</span><span class="slider-val" id="sens-val">50</span></div>
-        <input type="range" class="range-input" id="sens-slider" min="1" max="100" value="50" oninput="onSensChange(this.value)">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px"><span>Strict</span><span id="sens-mode" style="color:var(--accent2);font-weight:600">Normal</span><span>Sensitive</span></div>
-      </div>
-      <div id="sens-hint" style="font-size:11px;color:var(--text-3);margin-top:2px;margin-bottom:10px;line-height:1.4;padding:6px 8px;background:var(--bg2);border-radius:var(--radius-sm)">
-        If your mic picks up too much background noise, move the slider toward <strong style="color:var(--text-2)">Strict</strong>.
-      </div>
+        <!-- ═══ APP SETTINGS TAB ═══ -->
+        <div class="settings-section settings-tab-content" id="tab-app-settings" style="display:none">
+          <div class="settings-section-title">Keybinds</div>
+          <div class="setting-row">
+            <div class="setting-label">Toggle mute with key<small>Press to mute/unmute</small></div>
+            <label class="toggle"><input type="checkbox" id="toggle-mute-keybind" onchange="onMuteKeybindToggle()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="setting-row" id="mute-key-row" style="opacity:0.4;pointer-events:none">
+            <div class="setting-label">Mute Key</div>
+            <button class="ptt-key-btn" id="mute-key-btn" onclick="startListeningMuteKey()">KeyM</button>
+          </div>
+          <div class="setting-row" style="margin-top:8px">
+            <div class="setting-label">Pause/resume broadcast<small>Toggle broadcast pause with key</small></div>
+            <label class="toggle"><input type="checkbox" id="toggle-bcpause-keybind" onchange="onBcPauseKeybindToggle()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="setting-row" id="bcpause-key-row" style="opacity:0.4;pointer-events:none">
+            <div class="setting-label">Broadcast Pause Key</div>
+            <button class="ptt-key-btn" id="bcpause-key-btn" onclick="startListeningBcPauseKey()">KeyB</button>
+          </div>
 
-      <div class="slider-row">
-        <div class="slider-header"><span>Input volume boost</span><span class="slider-val" id="invol-val">100%</span></div>
-        <input type="range" class="range-input" id="invol-slider" min="50" max="300" value="100" oninput="onInputVolChange(this.value)">
-      </div>
-      <div class="setting-row" style="margin-top:8px">
-        <div class="setting-label">Noise Cancelation<small>Removes background noise from your mic</small></div>
-        <label class="toggle"><input type="checkbox" id="toggle-noise-cancel" checked onchange="onNoiseCancelToggle()"><span class="toggle-slider"></span></label>
-      </div>
-    </div>
+          <div class="settings-section-title" style="margin-top:20px">Push to Talk</div>
+          <div class="setting-row">
+            <div class="setting-label">Keyboard PTT<small>Hold a key to transmit</small></div>
+            <label class="toggle"><input type="checkbox" id="toggle-ptt" onchange="onPttToggle()"><span class="toggle-slider"></span></label>
+          </div>
+          <div class="setting-row" id="ptt-key-row" style="opacity:0.4;pointer-events:none">
+            <div class="setting-label">PTT Key</div>
+            <button class="ptt-key-btn" id="ptt-key-btn" onclick="startListeningPTT()">Space</button>
+          </div>
+          <div class="setting-row" style="margin-top:4px">
+            <div class="setting-label">Touch PTT button<small>Shows a hold button on screen</small></div>
+            <label class="toggle"><input type="checkbox" id="toggle-ptt-touch" onchange="onPttTouchToggle()"><span class="toggle-slider"></span></label>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.5;padding:8px;background:var(--bg2);border-radius:var(--radius-sm)">
+            ⚠ Keyboard PTT won't fire when the browser is in the background. Use the <strong style="color:var(--text-2)">Touch PTT button</strong> while gaming — it stays on screen and works regardless of focus.
+          </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">Keybinds</div>
-      <div class="setting-row">
-        <div class="setting-label">Toggle mute with key<small>Press to mute/unmute</small></div>
-        <label class="toggle"><input type="checkbox" id="toggle-mute-keybind" onchange="onMuteKeybindToggle()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="setting-row" id="mute-key-row" style="opacity:0.4;pointer-events:none">
-        <div class="setting-label">Mute Key</div>
-        <button class="ptt-key-btn" id="mute-key-btn" onclick="startListeningMuteKey()">KeyM</button>
-      </div>
-      <div class="setting-row" style="margin-top:8px">
-        <div class="setting-label">Pause/resume broadcast<small>Toggle broadcast pause with key</small></div>
-        <label class="toggle"><input type="checkbox" id="toggle-bcpause-keybind" onchange="onBcPauseKeybindToggle()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="setting-row" id="bcpause-key-row" style="opacity:0.4;pointer-events:none">
-        <div class="setting-label">Broadcast Pause Key</div>
-        <button class="ptt-key-btn" id="bcpause-key-btn" onclick="startListeningBcPauseKey()">KeyB</button>
-      </div>
-    </div>
+          <div id="settings-save-row" style="display:none;margin-top:16px">
+            <button class="btn-primary" onclick="saveSettings()">Save to Account</button>
+          </div>
+        </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">Push to Talk</div>
-      <div class="setting-row">
-        <div class="setting-label">Keyboard PTT<small>Hold a key to transmit</small></div>
-        <label class="toggle"><input type="checkbox" id="toggle-ptt" onchange="onPttToggle()"><span class="toggle-slider"></span></label>
-      </div>
-      <div class="setting-row" id="ptt-key-row" style="opacity:0.4;pointer-events:none">
-        <div class="setting-label">PTT Key</div>
-        <button class="ptt-key-btn" id="ptt-key-btn" onclick="startListeningPTT()">Space</button>
-      </div>
-      <div class="setting-row" style="margin-top:4px">
-        <div class="setting-label">Touch PTT button<small>Shows a hold button on screen</small></div>
-        <label class="toggle"><input type="checkbox" id="toggle-ptt-touch" onchange="onPttTouchToggle()"><span class="toggle-slider"></span></label>
-      </div>
-      <div style="font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.5;padding:8px;background:var(--bg2);border-radius:var(--radius-sm)">
-        ⚠ Keyboard PTT won't fire when the browser is in the background. Use the <strong style="color:var(--text-2)">Touch PTT button</strong> while gaming — it stays on screen and works regardless of focus.
-      </div>
-    </div>
-
-    <div id="settings-save-row" style="display:none;margin-top:8px">
-      <button class="btn-primary" onclick="saveSettings()">Save to Account</button>
-    </div>
-
-    <!-- ═══ PROFILE CUSTOMIZATION SECTION ═══ -->
-    <div class="settings-section" id="profile-settings-section" style="display:none">
-      <div class="settings-section-title">Profile</div>
-      <div class="field">
-        <label>Avatar</label>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="profile-settings-avatar" id="settings-avatar-preview"></div>
-          <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarFileSelected()">
-          <button class="ptt-key-btn" onclick="document.getElementById('avatar-file-input').click()">Upload Avatar</button>
+        <!-- ═══ USER PROFILE TAB ═══ -->
+        <div class="settings-section settings-tab-content" id="tab-user-profile" style="display:none">
+          <div class="settings-section-title">Profile</div>
+          <div id="profile-settings-section">
+            <div class="field">
+              <label>Avatar</label>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="profile-settings-avatar" id="settings-avatar-preview"></div>
+                <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarFileSelected()">
+                <button class="ptt-key-btn" onclick="document.getElementById('avatar-file-input').click()">Upload Avatar</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Custom Status</label>
+              <input type="text" id="profile-status-input" placeholder="What are you up to?" maxlength="60"/>
+            </div>
+            <div class="field">
+              <label>Bio</label>
+              <textarea id="profile-bio-input" placeholder="Tell us about yourself…" maxlength="190" rows="3" style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea>
+            </div>
+            <div class="field">
+              <label>Banner Color</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="color" id="profile-banner-color" value="#5865f2" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
+                <span id="profile-banner-color-label" style="font-size:13px;color:var(--text-3)">#5865f2</span>
+              </div>
+            </div>
+            <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
+          </div>
+          <div id="profile-guest-notice" style="display:none;font-size:13px;color:var(--text-3);text-align:center;padding:20px 0">Sign in to customize your profile</div>
         </div>
       </div>
-      <div class="field">
-        <label>Custom Status</label>
-        <input type="text" id="profile-status-input" placeholder="What are you up to?" maxlength="60"/>
-      </div>
-      <div class="field">
-        <label>Bio</label>
-        <textarea id="profile-bio-input" placeholder="Tell us about yourself…" maxlength="190" rows="3" style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea>
-      </div>
-      <div class="field">
-        <label>Banner Color</label>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input type="color" id="profile-banner-color" value="#5865f2" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
-          <span id="profile-banner-color-label" style="font-size:13px;color:var(--text-3)">#5865f2</span>
-        </div>
-      </div>
-      <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
     </div>
 
     <button class="btn-ghost" onclick="closeSettings()">Close</button>
