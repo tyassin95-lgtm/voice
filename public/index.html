@@ -490,7 +490,7 @@
       <div class="login-icon">🎙️</div>
       <div class="login-brand">OathlyVoice</div>
     </div>
-    <div class="modal-sub">Welcome back!</div>
+    <div class="modal-sub">Welcome back! Sign in to continue</div>
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchAuthTab('login')">Sign In</button>
       <button class="modal-tab" onclick="switchAuthTab('register')">Register</button>
@@ -2930,19 +2930,23 @@ function loadServerList() {
       list.innerHTML = '<div style="text-align:center;color:var(--text-3);padding:20px">No servers available</div>';
       return;
     }
-    list.innerHTML = res.servers.map(s => {
-      const lockBadge = s.requireMembership ? '<span class="server-list-badge locked">🔒 Members Only</span>' : '';
+    list.innerHTML = '';
+    res.servers.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'server-list-item';
+      item.dataset.serverId = s.id;
       const initial = s.name ? esc(s.name[0].toUpperCase()) : '?';
-      return `<div class="server-list-item" onclick="selectServer('${esc(s.id)}')">
-        <div class="server-list-icon">${initial}</div>
+      const lockBadge = s.requireMembership ? '<span class="server-list-badge locked">🔒 Members Only</span>' : '';
+      item.innerHTML = `<div class="server-list-icon">${initial}</div>
         <div class="server-list-info">
           <div class="server-list-name">${esc(s.name)}</div>
           <div class="server-list-meta">${s.parties} parties · ${s.onlineCount} online</div>
         </div>
         <span class="server-list-badge online">${s.onlineCount} online</span>
-        ${lockBadge}
-      </div>`;
-    }).join('');
+        ${lockBadge}`;
+      item.addEventListener('click', () => selectServer(s.id));
+      list.appendChild(item);
+    });
   });
 }
 
@@ -3067,15 +3071,26 @@ function loadOwnerServerList() {
   socket.emit('get-servers', (res) => {
     if (!res.ok) return;
     const list = document.getElementById('srv-mgmt-list');
-    list.innerHTML = res.servers.map(s => `
-      <div class="srv-mgmt-row" id="srv-row-${esc(s.id)}">
-        <span class="srv-name">${esc(s.name)}</span>
+    list.innerHTML = '';
+    res.servers.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'srv-mgmt-row';
+      row.id = 'srv-row-' + s.id;
+      row.innerHTML = `<span class="srv-name">${esc(s.name)}</span>
         <span style="font-size:11px;color:var(--text-3)">${s.parties}p</span>
-        ${s.requireMembership ? '<span style="font-size:10px;color:#d4a017">🔒</span>' : ''}
-        <button class="srv-mgmt-btn edit" onclick="ownerEditServer('${esc(s.id)}')">Edit</button>
-        <button class="srv-mgmt-btn danger" onclick="ownerDeleteServer('${esc(s.id)}','${esc(s.name)}')">Delete</button>
-      </div>
-    `).join('');
+        ${s.requireMembership ? '<span style="font-size:10px;color:#d4a017">🔒</span>' : ''}`;
+      const editBtn = document.createElement('button');
+      editBtn.className = 'srv-mgmt-btn edit';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', () => ownerEditServer(s.id));
+      const delBtn = document.createElement('button');
+      delBtn.className = 'srv-mgmt-btn danger';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', () => ownerDeleteServer(s.id, s.name));
+      row.appendChild(editBtn);
+      row.appendChild(delBtn);
+      list.appendChild(row);
+    });
   });
 }
 
@@ -3085,8 +3100,10 @@ function ownerEditServer(serverId) {
     const srv = res.servers.find(s => s.id === serverId);
     if (!srv) return;
 
-    const html = `<div style="padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-top:8px" id="srv-edit-panel">
-      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Editing: ${esc(srv.name)}</div>
+    const panel = document.createElement('div');
+    panel.id = 'srv-edit-panel';
+    panel.style.cssText = 'padding:12px;background:var(--bg);border-radius:var(--radius-sm);margin-top:8px';
+    panel.innerHTML = `<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:12px">Editing: ${esc(srv.name)}</div>
       <div class="field" style="margin-bottom:10px">
         <label>Server Name</label>
         <input type="text" id="srv-edit-name" value="${esc(srv.name)}" style="background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:8px;font-family:inherit;font-size:14px;outline:none;width:100%;height:36px">
@@ -3103,20 +3120,38 @@ function ownerEditServer(serverId) {
         <label style="display:block;font-size:12px;font-weight:700;letter-spacing:0.02em;color:var(--text-2);text-transform:uppercase;margin-bottom:6px">Members</label>
         <div style="display:flex;gap:6px;margin-bottom:6px">
           <input type="text" id="srv-edit-add-member" placeholder="Username to add" style="flex:1;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:6px;font-family:inherit;font-size:13px;outline:none;height:32px">
-          <button class="srv-mgmt-btn edit" onclick="ownerAddMember('${esc(serverId)}')" style="padding:6px 10px">Add</button>
+          <button class="srv-mgmt-btn edit" id="srv-edit-add-btn" style="padding:6px 10px">Add</button>
         </div>
-        <div id="srv-edit-members" style="max-height:120px;overflow-y:auto">${srv.members.map(m => `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;font-size:13px;color:var(--text-2)"><span>${esc(m)}</span><button class="srv-mgmt-btn danger" onclick="ownerRemoveMember('${esc(serverId)}','${esc(m)}')" style="padding:2px 6px;font-size:10px">×</button></div>`).join('')}</div>
+        <div id="srv-edit-members" style="max-height:120px;overflow-y:auto"></div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn-primary" onclick="ownerSaveServer('${esc(serverId)}')" style="flex:1;height:36px;line-height:36px">Save Changes</button>
-        <button class="btn-ghost" onclick="loadOwnerServerList()" style="flex:1;margin-top:0;height:36px;line-height:36px">Cancel</button>
-      </div>
-    </div>`;
+        <button class="btn-primary" id="srv-edit-save-btn" style="flex:1;height:36px;line-height:36px">Save Changes</button>
+        <button class="btn-ghost" id="srv-edit-cancel-btn" style="flex:1;margin-top:0;height:36px;line-height:36px">Cancel</button>
+      </div>`;
 
     const row = document.getElementById('srv-row-' + serverId);
-    if (row) {
-      row.outerHTML = html;
-    }
+    if (row) row.replaceWith(panel);
+
+    // Populate member list with event listeners
+    const membersEl = panel.querySelector('#srv-edit-members');
+    srv.members.forEach(m => {
+      const mRow = document.createElement('div');
+      mRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:3px 6px;font-size:13px;color:var(--text-2)';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = m;
+      const rmBtn = document.createElement('button');
+      rmBtn.className = 'srv-mgmt-btn danger';
+      rmBtn.style.cssText = 'padding:2px 6px;font-size:10px';
+      rmBtn.textContent = '×';
+      rmBtn.addEventListener('click', () => ownerRemoveMember(serverId, m));
+      mRow.appendChild(nameSpan);
+      mRow.appendChild(rmBtn);
+      membersEl.appendChild(mRow);
+    });
+
+    panel.querySelector('#srv-edit-add-btn').addEventListener('click', () => ownerAddMember(serverId));
+    panel.querySelector('#srv-edit-save-btn').addEventListener('click', () => ownerSaveServer(serverId));
+    panel.querySelector('#srv-edit-cancel-btn').addEventListener('click', () => loadOwnerServerList());
   });
 }
 
