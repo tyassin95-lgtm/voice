@@ -103,7 +103,8 @@ if (!fs.existsSync(SERVERS_FILE)) saveServers({ servers: {} });
 const serverIconStorage = multer.diskStorage({
   destination: path.join(__dirname, 'server_icons'),
   filename: (_req, file, cb) => {
-    const serverId = _req.body.serverId || 'unknown';
+    const serverId = _req.body.serverId;
+    if (!serverId) return cb(new Error('Missing serverId'));
     cb(null, serverId + path.extname(file.originalname));
   }
 });
@@ -119,7 +120,8 @@ const serverIconUpload = multer({
 const avatarStorage = multer.diskStorage({
   destination: path.join(__dirname, 'profile_images'),
   filename: (req, file, cb) => {
-    const username = req.body.username || 'unknown';
+    const username = req.body.username;
+    if (!username) return cb(new Error('Missing username'));
     cb(null, username.toLowerCase() + path.extname(file.originalname));
   }
 });
@@ -139,7 +141,7 @@ app.post('/voice/api/create-server', (req, res) => {
   if (ownerCode !== OWNER_CODE) return res.json({ ok: false, error: 'Unauthorized' });
   if (!name || !ownerUsername) return res.json({ ok: false, error: 'Missing fields' });
   const data = loadServers();
-  const id = 'srv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  const id = 'srv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   data.servers[id] = {
     id,
     name,
@@ -272,7 +274,7 @@ app.post('/voice/api/create-channel', async (req, res) => {
   const isServerAdmin = server.admins.includes(username) || server.owner === username;
   // Members can only create temporary channels
   if (!temporary && !isServerAdmin) return res.json({ ok: false, error: 'Only admins can create permanent channels' });
-  const channelId = 'ch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  const channelId = 'ch_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   let hashedPassword = null;
   if (isPrivate && password) {
     hashedPassword = await bcrypt.hash(password, 10);
@@ -287,7 +289,8 @@ app.post('/voice/api/create-channel', async (req, res) => {
     createdBy: username
   };
   saveServers(data);
-  res.json({ ok: true, channel: { ...server.channels[channelId], password: undefined } });
+  const { password: _pw, ...channelData } = server.channels[channelId];
+  res.json({ ok: true, channel: channelData });
 });
 
 app.post('/voice/api/delete-channel', (req, res) => {
