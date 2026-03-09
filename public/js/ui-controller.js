@@ -814,6 +814,16 @@ export function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
+// ── Member Sidebar (mobile) ──
+export function toggleMemberSidebar() {
+  document.getElementById('member-sidebar').classList.toggle('sidebar-open');
+  document.getElementById('member-sidebar-overlay').classList.toggle('open');
+}
+export function closeMemberSidebar() {
+  document.getElementById('member-sidebar').classList.remove('sidebar-open');
+  document.getElementById('member-sidebar-overlay').classList.remove('open');
+}
+
 export function renderSidebar() {
   const list = document.getElementById('party-list');
   list.innerHTML = '';
@@ -1008,12 +1018,14 @@ function memberCardHTML(m, isMe) {
     ? `<img src="${esc(avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`
     : esc((m.username || '?')[0].toUpperCase());
   const bannerColor = safeColor(isMe ? S.myBannerColor : (m.bannerColor || '#5865f2'));
+  const memberRole = isMe ? S.myRole : (S.memberList.find(u => u.username === m.username)?.role || 'user');
+  const glowClass = memberRole === 'owner' ? ' role-owner-glow' : memberRole === 'admin' ? ' role-admin-glow' : '';
 
   return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
     id="card-${m.socketId}"
     style="border-top:3px solid ${bannerColor}"
     ${!isMe?`onclick="window._openPopover('${m.socketId}',event)"`:''}>
-    <div class="member-avatar${volCustom?' vol-custom':''}" ${volCustom?`data-vol="${vol}%"`:''}>${avatarContent}</div>
+    <div class="member-avatar${volCustom?' vol-custom':''}${glowClass}" ${volCustom?`data-vol="${vol}%"`:''}>${avatarContent}</div>
     <div class="member-name">${esc(m.username)}</div>
     ${isMe?'<div class="member-you">· you</div>':''}
     <div class="member-tags">
@@ -1165,8 +1177,9 @@ function msbUserHTML(u, isOnline) {
     ? `<img src="${esc(u.avatarUrl)}" alt="">`
     : esc((u.username || '?')[0].toUpperCase());
   const avatarStyle = u.avatarUrl ? `background-image:url('${esc(u.avatarUrl)}')` : '';
+  const glowClass = u.role === 'owner' ? ' role-owner-glow' : u.role === 'admin' ? ' role-admin-glow' : '';
   return `<div class="msb-user${isOnline ? ' is-online' : ''}" data-msb-user="${esc(u.username)}">
-    <div class="msb-user-avatar" ${avatarStyle ? `style="${avatarStyle}"` : ''}>
+    <div class="msb-user-avatar${glowClass}" ${avatarStyle ? `style="${avatarStyle}"` : ''}>
       ${u.avatarUrl ? '' : avatarContent}
       <span class="msb-status-dot ${isOnline ? 'online' : 'offline'}"></span>
     </div>

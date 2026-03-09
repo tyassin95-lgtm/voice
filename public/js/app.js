@@ -16,7 +16,7 @@ import {
   onBroadcastPauseToggle,
   openPopover, closePopover, onVolSlider, toggleLocalMute,
   adminServerMute, adminKick,
-  toggleSidebar, closeSidebar, leaveParty, logout,
+  toggleSidebar, closeSidebar, toggleMemberSidebar, closeMemberSidebar, leaveParty, logout,
   onInputDeviceChange, onOutputDeviceChange, populateDeviceList,
   openProfileModal, closeProfileModal, saveProfile, onAvatarFileSelected
 } from './ui-controller.js';
@@ -62,6 +62,8 @@ window.adminServerMute      = adminServerMute;
 window.adminKick            = adminKick;
 window.toggleSidebar        = toggleSidebar;
 window.closeSidebar         = closeSidebar;
+window.toggleMemberSidebar  = toggleMemberSidebar;
+window.closeMemberSidebar   = closeMemberSidebar;
 window.leaveParty           = leaveParty;
 window.logout               = logout;
 window.onInputDeviceChange  = onInputDeviceChange;
