@@ -272,6 +272,7 @@
     </div>
     <span class="role-badge role-badge-admin hidden" id="badge-admin">Admin</span>
     <span class="role-badge role-badge-owner hidden" id="badge-owner">Owner</span>
+    <button class="members-btn" onclick="toggleMemberSidebar()" aria-label="Members">👥</button>
     <div class="user-chip" onclick="openSettings()">
       <div class="chip-avatar" id="header-avatar"></div>
       <div class="chip-name" id="header-username"></div>
@@ -288,6 +289,7 @@
   </main>
 
   <!-- ═══ RIGHT MEMBER SIDEBAR ═══ -->
+  <div class="member-sidebar-overlay" id="member-sidebar-overlay" onclick="closeMemberSidebar()"></div>
   <aside class="member-sidebar" id="member-sidebar">
     <div class="member-sidebar-header">Members</div>
     <div class="member-sidebar-list" id="member-sidebar-list"></div>
