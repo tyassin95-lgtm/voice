@@ -1,4 +1,5 @@
 const express = require('express');
+const fs      = require('fs');
 const path    = require('path');
 const crypto  = require('crypto');
 const multer  = require('multer');
@@ -9,16 +10,10 @@ const { defaultSettings, OWNER_CODE } = require('../config');
 const router = express.Router();
 
 // ── Multer config for banner uploads ──
-const bannerStorage = multer.diskStorage({
-  destination: path.join(__dirname, '..', '..', 'public', 'uploads', 'banners'),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
-    const serverId = _req.body.serverId || 'srv';
-    cb(null, serverId + ext);
-  }
-});
+// Use memoryStorage so req.body.serverId is available after multer runs.
+// We write the file manually after reading serverId from the parsed body.
 const bannerUpload = multer({
-  storage: bannerStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 3 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = /\.(jpe?g|png|gif|webp)$/i;
@@ -140,14 +135,21 @@ router.post('/servers/create', (req, res) => {
 });
 
 // POST /voice/api/servers/upload-banner
-router.post('/servers/upload-banner', bannerUpload.single('banner'), (req, res) => {
+router.post('/servers/upload-banner', bannerUpload.single('banner'), async (req, res) => {
   const { ownerCode, serverId } = req.body || {};
   if (ownerCode !== OWNER_CODE) return res.json({ ok: false, error: 'Unauthorized' });
   const servers = loadServers();
   const srv = servers[serverId];
   if (!srv) return res.json({ ok: false, error: 'Server not found' });
   if (!req.file) return res.json({ ok: false, error: 'No file uploaded' });
-  srv.bannerUrl = '/voice/uploads/banners/' + req.file.filename;
+
+  // Write the buffer to disk now that we have serverId from the parsed body
+  const ext = path.extname(req.file.originalname) || '.png';
+  const filename = serverId + ext;
+  const destDir = path.join(__dirname, '..', '..', 'public', 'uploads', 'banners');
+  await fs.promises.writeFile(path.join(destDir, filename), req.file.buffer);
+
+  srv.bannerUrl = '/voice/uploads/banners/' + filename;
   saveServers(servers);
   res.json({ ok: true, bannerUrl: srv.bannerUrl });
 });

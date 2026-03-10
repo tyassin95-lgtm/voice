@@ -215,12 +215,17 @@ function registerSocketHandlers(io) {
       user.isBroadcaster = isBroadcaster;
       if (targets !== undefined) user.broadcastTargets = targets;
       if (paused !== undefined) user.broadcastPaused  = paused;
-      if (isBroadcaster) {
-        io.emit('broadcaster-joined', { socketId: socket.id, username: user.username, targets: user.broadcastTargets, paused: user.broadcastPaused });
-      } else {
-        io.emit('broadcaster-left', { socketId: socket.id });
-      }
+
       if (user.serverId) {
+        // Only notify users in the same server
+        for (const [sid, u] of Object.entries(users)) {
+          if (u.serverId === user.serverId) {
+            io.to(sid).emit(
+              isBroadcaster ? 'broadcaster-joined' : 'broadcaster-left',
+              { socketId: socket.id, username: user.username, targets: user.broadcastTargets, paused: user.broadcastPaused }
+            );
+          }
+        }
         const servers = loadServers();
         const srv = servers[user.serverId];
         if (srv) broadcastPartyList(user.serverId, srv.channels);
@@ -231,8 +236,13 @@ function registerSocketHandlers(io) {
       const user = users[socket.id];
       if (!user || !user.isBroadcaster) return;
       user.broadcastPaused = paused;
-      io.emit('broadcaster-paused', { socketId: socket.id, paused });
+      // Only notify users in the same server
       if (user.serverId) {
+        for (const [sid, u] of Object.entries(users)) {
+          if (u.serverId === user.serverId) {
+            io.to(sid).emit('broadcaster-paused', { socketId: socket.id, paused });
+          }
+        }
         const servers = loadServers();
         const srv = servers[user.serverId];
         if (srv) broadcastPartyList(user.serverId, srv.channels);
@@ -465,6 +475,8 @@ function registerSocketHandlers(io) {
           }
         } else if (Array.isArray(targets)) {
           for (const channelId of targets) {
+            // Validate that channelId belongs to THIS server
+            if (!srv.channels.find(c => c.id === channelId)) continue;
             const key = user.serverId + ':' + channelId;
             socket.to('party-' + key).volatile.emit('audio-from', { from: socket.id, chunk });
           }
@@ -489,7 +501,13 @@ function registerSocketHandlers(io) {
           const srv = servers[user.serverId];
           if (srv) broadcastPartyList(user.serverId, srv.channels);
         }
-        if (user.isBroadcaster) io.emit('broadcaster-left', { socketId: socket.id });
+        if (user.isBroadcaster && user.serverId) {
+          for (const [sid, u] of Object.entries(users)) {
+            if (u.serverId === user.serverId) {
+              io.to(sid).emit('broadcaster-left', { socketId: socket.id });
+            }
+          }
+        }
         const unameLower = user.username?.toLowerCase();
         delete users[socket.id];
         // User went offline — broadcast to all servers where they are a member
