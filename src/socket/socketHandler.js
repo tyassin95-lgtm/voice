@@ -1,6 +1,7 @@
 const { OWNER_CODE, NUM_PARTIES } = require('../config');
 const { users, parties, serializeUser, getPartyList } = require('../state');
 const { loadAccounts, saveAccounts } = require('../services/accountService');
+const { loadServers, saveServers } = require('../services/serverService');
 
 function registerSocketHandlers(io) {
 
@@ -22,9 +23,20 @@ function registerSocketHandlers(io) {
     }));
   }
 
+  // Broadcast party list only to sockets in the same server
+  function broadcastPartyList(serverId, channels) {
+    const partyList = getPartyList(serverId, channels);
+    for (const [sid, u] of Object.entries(users)) {
+      if (u.serverId === serverId) {
+        io.to(sid).emit('party-update', partyList);
+      }
+    }
+  }
+
   io.on('connection', (socket) => {
     console.log('Connected:', socket.id);
-    socket.emit('init', { partyList: getPartyList(), memberList: getMemberList() });
+    // Don't send party data on init — client will join a server first
+    socket.emit('init', { memberList: getMemberList() });
 
     socket.on('join', ({ username }) => {
       // Look up persistent role from accounts
@@ -32,9 +44,8 @@ function registerSocketHandlers(io) {
       const acc = accounts[username?.toLowerCase()];
       const role = acc?.role || 'user';
       const autoAdmin = role === 'admin' || role === 'owner';
-      users[socket.id] = { username, party: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role, avatarUrl: acc?.avatarUrl || '', bannerColor: acc?.bannerColor || '#5865f2', bio: acc?.bio || '' };
+      users[socket.id] = { username, party: null, serverId: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role, avatarUrl: acc?.avatarUrl || '', bannerColor: acc?.bannerColor || '#5865f2', bio: acc?.bio || '' };
       console.log(`${username} joined (role: ${role}${autoAdmin ? ', auto-admin' : ''})`);
-      io.emit('party-update', getPartyList());
       io.emit('member-list', getMemberList());
       // Notify the client of their role-based admin status
       if (autoAdmin) socket.emit('role-admin-granted', { role });
@@ -50,37 +61,126 @@ function registerSocketHandlers(io) {
         user.bannerColor = bannerColor;
       if (bio !== undefined && typeof bio === 'string')
         user.bio = bio.slice(0, 190);
-      io.emit('party-update', getPartyList());
+      // Broadcast to server if in one
+      if (user.serverId) {
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (srv) broadcastPartyList(user.serverId, srv.channels);
+      }
       io.emit('member-list', getMemberList());
     });
 
-    socket.on('join-party', ({ partyId }) => {
+    // ── Server: join a server context ──
+    socket.on('join-server', ({ serverId }) => {
       const user = users[socket.id];
       if (!user) return;
-      if (user.party !== null) {
-        parties[user.party].delete(socket.id);
-        socket.leave(`party-${user.party}`);
-        socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
+      const servers = loadServers();
+      const srv = servers[serverId];
+      if (!srv) return;
+      // Verify membership (or owner)
+      const uname = user.username.toLowerCase();
+      const accounts = loadAccounts();
+      const acc = accounts[uname];
+      const isOwner = acc?.role === 'owner';
+      if (!isOwner && !srv.members.includes(uname) && !srv.admins.includes(uname)) return;
+
+      // Leave current channel if in one
+      if (user.party !== null && user.serverId) {
+        const oldKey = user.serverId + ':' + user.party;
+        if (parties[oldKey]) parties[oldKey].delete(socket.id);
+        socket.leave('party-' + oldKey);
+        socket.to('party-' + oldKey).emit('peer-left', { socketId: socket.id });
+        // Broadcast update to old server
+        const oldSrv = servers[user.serverId];
+        if (oldSrv) broadcastPartyList(user.serverId, oldSrv.channels);
       }
-      user.party = partyId;
-      parties[partyId].add(socket.id);
-      socket.join(`party-${partyId}`);
-      const peersInParty = [...parties[partyId]]
+      user.party = null;
+      user.serverId = serverId;
+
+      // Determine admin status for this server
+      const isServerAdmin = isOwner || srv.admins.includes(uname);
+
+      // Build server data for client (strip invite code details for non-admins)
+      const serverData = { ...srv };
+      if (!isServerAdmin) {
+        delete serverData.inviteCodes;
+        serverData.pendingRequests = [];
+      }
+
+      socket.emit('server-init', {
+        server: serverData,
+        partyList: getPartyList(serverId, srv.channels)
+      });
+    });
+
+    // ── Server: leave server context ──
+    socket.on('leave-server', () => {
+      const user = users[socket.id];
+      if (!user) return;
+      if (user.party !== null && user.serverId) {
+        const key = user.serverId + ':' + user.party;
+        if (parties[key]) parties[key].delete(socket.id);
+        socket.leave('party-' + key);
+        socket.to('party-' + key).emit('peer-left', { socketId: socket.id });
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (srv) broadcastPartyList(user.serverId, srv.channels);
+      }
+      user.party = null;
+      user.serverId = null;
+    });
+
+    socket.on('join-party', ({ serverId, channelId }) => {
+      const user = users[socket.id];
+      if (!user) return;
+
+      // Verify membership
+      const servers = loadServers();
+      const srv = servers[serverId];
+      if (!srv) return;
+      const uname = user.username.toLowerCase();
+      const accounts = loadAccounts();
+      const acc = accounts[uname];
+      const isOwner = acc?.role === 'owner';
+      if (!isOwner && !srv.members.includes(uname) && !srv.admins.includes(uname)) return;
+
+      // Verify channel exists
+      if (!srv.channels.find(ch => ch.id === channelId)) return;
+
+      // Leave current party if in one
+      if (user.party !== null && user.serverId) {
+        const oldKey = user.serverId + ':' + user.party;
+        if (parties[oldKey]) parties[oldKey].delete(socket.id);
+        socket.leave('party-' + oldKey);
+        socket.to('party-' + oldKey).emit('peer-left', { socketId: socket.id });
+      }
+
+      user.serverId = serverId;
+      user.party = channelId;
+      const key = serverId + ':' + channelId;
+      if (!parties[key]) parties[key] = new Set();
+      parties[key].add(socket.id);
+      socket.join('party-' + key);
+
+      const peersInParty = [...parties[key]]
         .filter(sid => sid !== socket.id)
         .map(serializeUser);
-      socket.emit('party-peers', { peers: peersInParty, partyId });
-      socket.to(`party-${partyId}`).emit('peer-joined', serializeUser(socket.id));
-      io.emit('party-update', getPartyList());
+      socket.emit('party-peers', { peers: peersInParty, partyId: channelId });
+      socket.to('party-' + key).emit('peer-joined', serializeUser(socket.id));
+      broadcastPartyList(serverId, srv.channels);
     });
 
     socket.on('leave-party', () => {
       const user = users[socket.id];
       if (!user || user.party === null) return;
-      parties[user.party].delete(socket.id);
-      socket.leave(`party-${user.party}`);
-      socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
+      const key = user.serverId + ':' + user.party;
+      if (parties[key]) parties[key].delete(socket.id);
+      socket.leave('party-' + key);
+      socket.to('party-' + key).emit('peer-left', { socketId: socket.id });
+      const servers = loadServers();
+      const srv = servers[user.serverId];
       user.party = null;
-      io.emit('party-update', getPartyList());
+      if (srv) broadcastPartyList(user.serverId, srv.channels);
     });
 
     socket.on('set-broadcaster', ({ isBroadcaster, targets, paused }) => {
@@ -94,7 +194,11 @@ function registerSocketHandlers(io) {
       } else {
         io.emit('broadcaster-left', { socketId: socket.id });
       }
-      io.emit('party-update', getPartyList());
+      if (user.serverId) {
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (srv) broadcastPartyList(user.serverId, srv.channels);
+      }
     });
 
     socket.on('set-broadcast-paused', ({ paused }) => {
@@ -102,7 +206,11 @@ function registerSocketHandlers(io) {
       if (!user || !user.isBroadcaster) return;
       user.broadcastPaused = paused;
       io.emit('broadcaster-paused', { socketId: socket.id, paused });
-      io.emit('party-update', getPartyList());
+      if (user.serverId) {
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (srv) broadcastPartyList(user.serverId, srv.channels);
+      }
     });
 
     // ── Owner: verify owner code (opens management panel on client) ──
@@ -114,15 +222,9 @@ function registerSocketHandlers(io) {
       cb({ ok: true, isOwner: true });
     });
 
-    // ── Deprecated: kept for backwards compatibility but no longer toggles admin ──
-    socket.on('revoke-admin', () => {
-      // No-op: admin privileges are now managed only through the owner panel
-    });
-
-    // ── Deprecated: kept for backwards compatibility but no longer toggles admin ──
-    socket.on('claim-role-admin', () => {
-      // No-op: admin privileges are now determined by stored role on join
-    });
+    // ── Deprecated: kept for backwards compatibility ──
+    socket.on('revoke-admin', () => {});
+    socket.on('claim-role-admin', () => {});
 
     // ── Owner: search registered users ──
     socket.on('owner-search-users', ({ query, ownerCode }, cb) => {
@@ -148,7 +250,6 @@ function registerSocketHandlers(io) {
       if (acc.role === 'owner') return cb({ ok: false, error: 'Cannot modify owner role' });
       acc.role = 'admin';
       saveAccounts(accounts);
-      // Update any currently connected session for this user
       for (const [sid, u] of Object.entries(users)) {
         if (u.username?.toLowerCase() === key) {
           u.isAdmin = true;
@@ -156,7 +257,6 @@ function registerSocketHandlers(io) {
           io.to(sid).emit('role-admin-granted', { role: 'admin' });
         }
       }
-      io.emit('party-update', getPartyList());
       cb({ ok: true });
     });
 
@@ -171,7 +271,6 @@ function registerSocketHandlers(io) {
       if (acc.role === 'owner') return cb({ ok: false, error: 'Cannot modify owner role' });
       acc.role = 'user';
       saveAccounts(accounts);
-      // Update any currently connected session for this user
       for (const [sid, u] of Object.entries(users)) {
         if (u.username?.toLowerCase() === key) {
           u.isAdmin = false;
@@ -179,7 +278,6 @@ function registerSocketHandlers(io) {
           io.to(sid).emit('role-admin-revoked');
         }
       }
-      io.emit('party-update', getPartyList());
       cb({ ok: true });
     });
 
@@ -191,7 +289,11 @@ function registerSocketHandlers(io) {
       if (!target) return;
       target.serverMuted = muted;
       io.to(targetId).emit('server-muted', { muted, by: admin.username });
-      io.emit('party-update', getPartyList());
+      if (target.serverId) {
+        const servers = loadServers();
+        const srv = servers[target.serverId];
+        if (srv) broadcastPartyList(target.serverId, srv.channels);
+      }
       console.log(`[ADMIN] ${admin.username} ${muted ? 'muted' : 'unmuted'} ${target.username}`);
     });
 
@@ -209,36 +311,55 @@ function registerSocketHandlers(io) {
       }, 500);
     });
 
-    // ── Admin: move user to different party ──
+    // ── Admin: move user to different channel ──
     socket.on('admin-move', ({ targetId, toPartyId }) => {
       const admin = users[socket.id];
       if (!admin?.isAdmin) return;
       const target = users[targetId];
-      if (!target) return;
+      if (!target || !target.serverId) return;
+
+      const serverId = target.serverId;
+      const servers = loadServers();
+      const srv = servers[serverId];
+      if (!srv) return;
 
       if (target.party !== null) {
-        parties[target.party].delete(targetId);
-        io.to(`party-${target.party}`).emit('peer-left', { socketId: targetId });
+        const oldKey = serverId + ':' + target.party;
+        if (parties[oldKey]) parties[oldKey].delete(targetId);
+        io.to('party-' + oldKey).emit('peer-left', { socketId: targetId });
         const targetSocket = io.sockets.sockets.get(targetId);
-        if (targetSocket) targetSocket.leave(`party-${target.party}`);
+        if (targetSocket) targetSocket.leave('party-' + oldKey);
       }
 
       target.party = toPartyId;
-      parties[toPartyId].add(targetId);
+      const newKey = serverId + ':' + toPartyId;
+      if (!parties[newKey]) parties[newKey] = new Set();
+      parties[newKey].add(targetId);
       const targetSocket = io.sockets.sockets.get(targetId);
       if (targetSocket) {
-        targetSocket.join(`party-${toPartyId}`);
-
-        const peersInParty = [...parties[toPartyId]]
+        targetSocket.join('party-' + newKey);
+        const peersInParty = [...parties[newKey]]
           .filter(sid => sid !== targetId)
           .map(serializeUser);
         targetSocket.emit('party-peers', { peers: peersInParty, partyId: toPartyId });
-        targetSocket.to(`party-${toPartyId}`).emit('peer-joined', serializeUser(targetId));
+        targetSocket.to('party-' + newKey).emit('peer-joined', serializeUser(targetId));
         targetSocket.emit('admin-moved', { by: admin.username, toPartyId });
       }
 
-      io.emit('party-update', getPartyList());
-      console.log(`[ADMIN] ${admin.username} moved ${target.username} to party ${toPartyId}`);
+      broadcastPartyList(serverId, srv.channels);
+      console.log(`[ADMIN] ${admin.username} moved ${target.username} to channel ${toPartyId}`);
+    });
+
+    // ── Admin: remove member from server (after REST call) ──
+    socket.on('admin-remove-from-server', ({ targetUsername }) => {
+      const admin = users[socket.id];
+      if (!admin?.isAdmin) return;
+      const tname = targetUsername?.toLowerCase();
+      for (const [sid, u] of Object.entries(users)) {
+        if (u.username?.toLowerCase() === tname) {
+          io.to(sid).emit('server-member-removed');
+        }
+      }
     });
 
     // ── User: update self-mute state ──
@@ -246,7 +367,11 @@ function registerSocketHandlers(io) {
       const user = users[socket.id];
       if (!user) return;
       user.selfMuted = muted;
-      io.emit('party-update', getPartyList());
+      if (user.serverId) {
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (srv) broadcastPartyList(user.serverId, srv.channels);
+      }
     });
 
     // ── User: update self-deafen state ──
@@ -255,7 +380,11 @@ function registerSocketHandlers(io) {
       if (!user) return;
       user.selfDeafened = deafened;
       if (deafened) user.selfMuted = true;
-      io.emit('party-update', getPartyList());
+      if (user.serverId) {
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (srv) broadcastPartyList(user.serverId, srv.channels);
+      }
     });
 
     // ── Latency: respond to ping-check so client can measure RTT ──
@@ -266,73 +395,63 @@ function registerSocketHandlers(io) {
     // ── Latency: relay a user's reported latency to their party ──
     socket.on('latency-report', ({ latency }) => {
       const user = users[socket.id];
-      if (!user || user.party === null) return;
-      socket.to(`party-${user.party}`).volatile.emit('latency-update', { socketId: socket.id, latency });
+      if (!user || user.party === null || !user.serverId) return;
+      const key = user.serverId + ':' + user.party;
+      socket.to('party-' + key).volatile.emit('latency-update', { socketId: socket.id, latency });
     });
 
     // ── Audio relay ──
-    // Use volatile for audio: drops packets under backpressure instead of queuing
-    // (queued audio = ever-growing latency, dropped audio = momentary glitch)
-  socket.on('audio-chunk', (chunk) => {
-    const user = users[socket.id];
-    if (!user || user.serverMuted) return;
+    socket.on('audio-chunk', (chunk) => {
+      const user = users[socket.id];
+      if (!user || user.serverMuted) return;
 
-    // Broadcaster logic
-    if (user.isBroadcaster) {
+      if (user.isBroadcaster) {
+        if (user.party === null || !user.serverId) return;
 
-      // Rule 1: must be in a party
-      if (user.party === null) return;
+        if (user.broadcastPaused) {
+          const key = user.serverId + ':' + user.party;
+          socket.to('party-' + key).volatile.emit('audio-from', { from: socket.id, chunk });
+          return;
+        }
 
-      // Rule 3: paused = talk only to own party
-      if (user.broadcastPaused) {
-        socket.to(`party-${user.party}`).volatile.emit('audio-from', {
-          from: socket.id,
-          chunk
-        });
+        const targets = user.broadcastTargets;
+        const servers = loadServers();
+        const srv = servers[user.serverId];
+        if (!srv) return;
+
+        if (targets === 'all') {
+          for (const ch of srv.channels) {
+            const key = user.serverId + ':' + ch.id;
+            socket.to('party-' + key).volatile.emit('audio-from', { from: socket.id, chunk });
+          }
+        } else if (Array.isArray(targets)) {
+          for (const channelId of targets) {
+            const key = user.serverId + ':' + channelId;
+            socket.to('party-' + key).volatile.emit('audio-from', { from: socket.id, chunk });
+          }
+        }
         return;
       }
 
-      // Rule 2: broadcast only to parties
-      const targets = user.broadcastTargets;
-
-      if (targets === 'all') {
-        for (let i = 1; i <= NUM_PARTIES; i++) {
-          socket.to(`party-${i}`).volatile.emit('audio-from', {
-            from: socket.id,
-            chunk
-          });
-        }
-      } else if (Array.isArray(targets)) {
-        for (const partyId of targets) {
-          socket.to(`party-${partyId}`).volatile.emit('audio-from', {
-            from: socket.id,
-            chunk
-          });
-        }
+      if (user.party !== null && user.serverId) {
+        const key = user.serverId + ':' + user.party;
+        socket.to('party-' + key).volatile.emit('audio-from', { from: socket.id, chunk });
       }
-
-      return;
-    }
-
-    // Normal user audio
-    if (user.party !== null) {
-      socket.to(`party-${user.party}`).volatile.emit('audio-from', {
-        from: socket.id,
-        chunk
-      });
-    }
-  });
+    });
 
     socket.on('disconnect', () => {
       const user = users[socket.id];
       if (user) {
-        if (user.party !== null) {
-          parties[user.party].delete(socket.id);
-          socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
+        if (user.party !== null && user.serverId) {
+          const key = user.serverId + ':' + user.party;
+          if (parties[key]) parties[key].delete(socket.id);
+          socket.to('party-' + key).emit('peer-left', { socketId: socket.id });
+          const servers = loadServers();
+          const srv = servers[user.serverId];
+          if (srv) broadcastPartyList(user.serverId, srv.channels);
         }
         if (user.isBroadcaster) io.emit('broadcaster-left', { socketId: socket.id });
         delete users[socket.id];
-        io.emit('party-update', getPartyList());
         io.emit('member-list', getMemberList());
       }
       console.log('Disconnected:', socket.id);

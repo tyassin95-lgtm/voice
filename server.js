@@ -1,11 +1,15 @@
 const express = require('express');
 const http    = require('http');
+const fs      = require('fs');
 const { Server } = require('socket.io');
 const path    = require('path');
 
 const apiRoutes     = require('./src/routes/api');
 const profileRoutes = require('./src/routes/profile');
 const { registerSocketHandlers } = require('./src/socket/socketHandler');
+
+// Ensure upload directories exist
+fs.mkdirSync(path.join(__dirname, 'public', 'uploads', 'banners'), { recursive: true });
 
 const app    = express();
 const server = http.createServer(app);
