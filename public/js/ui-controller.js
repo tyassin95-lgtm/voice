@@ -29,7 +29,7 @@ function updateOwnerLoginVisibility() {
   if (oldContent) oldContent.style.display = 'none';
   // Show the dedicated tab only when not yet admin
   if (ownerTab)    ownerTab.style.display    = S.isAdmin ? 'none' : '';
-  if (ownerContent) ownerContent.style.display = S.isAdmin ? 'none' : 'none'; // tab switching handles visibility
+  if (ownerContent) ownerContent.style.display = 'none'; // tab switching handles content visibility
 }
 
 // ── Auth tab switching ──
