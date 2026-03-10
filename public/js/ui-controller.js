@@ -8,6 +8,13 @@ import { initAudio, removePeerPlayer, switchMicrophone, initVAD } from './audio-
 // Validate hex color format for safe inline style use
 function safeColor(c) { return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#5865f2'; }
 
+function updateOwnerLoginVisibility() {
+  const ownerLoginRow = document.getElementById('owner-login-row');
+  const ownerLoginContent = document.getElementById('owner-login-content');
+  if (ownerLoginRow) ownerLoginRow.style.display = S.isAdmin ? 'none' : 'block';
+  if (ownerLoginContent) ownerLoginContent.style.display = S.isAdmin ? 'none' : 'block';
+}
+
 // ── Auth tab switching ──
 export function switchAuthTab(tab) {
   ['login','register','guest'].forEach(t => {
@@ -91,7 +98,7 @@ export function enterApp() {
   const sidebarUsername = document.getElementById('sidebar-username');
   if (sidebarAvatar) {
     if (S.myAvatarUrl) {
-      sidebarAvatar.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><span class="status-dot connected" id="status-dot"></span>`;
+      sidebarAvatar.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt=""><span class="status-dot connected" id="status-dot"></span>`;
     } else {
       sidebarAvatar.textContent = S.myUsername[0].toUpperCase();
       // Re-add the status dot
@@ -137,10 +144,7 @@ export function applySettingsUI() {
   const ncStored = localStorage.getItem('voice_noise_cancelation_enabled');
   if (ncStored !== null) S.settings.noiseCancelation = ncStored === 'true';
   document.getElementById('toggle-noise-cancel').checked = S.settings.noiseCancelation !== false;
-  const ownerLoginRow = document.getElementById('owner-login-row');
-  const ownerLoginContent = document.getElementById('owner-login-content');
-  if (ownerLoginRow) ownerLoginRow.style.display = S.isAdmin ? 'none' : 'block';
-  if (ownerLoginContent) ownerLoginContent.style.display = S.isAdmin ? 'none' : 'block';
+  updateOwnerLoginVisibility();
 }
 
 export function openSettings() {
@@ -1154,10 +1158,7 @@ export function updateRoleBadge() {
     badgeAdmin.classList.add('hidden');
     badgeOwner.classList.add('hidden');
   }
-  const ownerLoginRow = document.getElementById('owner-login-row');
-  const ownerLoginContent = document.getElementById('owner-login-content');
-  if (ownerLoginRow) ownerLoginRow.style.display = S.isAdmin ? 'none' : 'block';
-  if (ownerLoginContent) ownerLoginContent.style.display = S.isAdmin ? 'none' : 'block';
+  updateOwnerLoginVisibility();
 }
 
 // ── Logout ──
@@ -1294,7 +1295,7 @@ export async function onAvatarFileSelected() {
     const sidebarAvatar = document.getElementById('sidebar-avatar');
     if (sidebarAvatar) {
       if (data.avatarUrl) {
-        sidebarAvatar.innerHTML = `<img src="${esc(data.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><span class="status-dot connected" id="status-dot"></span>`;
+        sidebarAvatar.innerHTML = `<img src="${esc(data.avatarUrl)}" alt=""><span class="status-dot connected" id="status-dot"></span>`;
       } else {
         sidebarAvatar.innerHTML = `<span class="status-dot connected" id="status-dot"></span>`;
         sidebarAvatar.prepend(document.createTextNode(S.myUsername[0].toUpperCase()));
