@@ -12,6 +12,7 @@ import {
   setPTTTransmit, toggleMute, toggleDeafen,
   onAdminClick, closeAdminModal, submitAdminPassword,
   closeAdminManagement, onMgmtSearch,
+  switchServerSettingsTab, onSSMemberSearch,
   toggleBroadcaster, closeBroadcastModal, bcToggleAll, startBroadcast,
   onBroadcastPauseToggle,
   openPopover, closePopover, onVolSlider, toggleLocalMute,
@@ -57,6 +58,8 @@ window.closeAdminModal      = closeAdminModal;
 window.submitAdminPassword  = submitAdminPassword;
 window.closeAdminManagement = closeAdminManagement;
 window.onMgmtSearch         = onMgmtSearch;
+window.switchServerSettingsTab = switchServerSettingsTab;
+window.onSSMemberSearch        = onSSMemberSearch;
 window.toggleBroadcaster    = toggleBroadcaster;
 window.closeBroadcastModal  = closeBroadcastModal;
 window.bcToggleAll          = bcToggleAll;

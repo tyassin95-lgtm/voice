@@ -222,6 +222,7 @@
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <nav class="nav-rail">
     <div class="nav-rail-logo">🎙️</div>
+    <div style="width:32px;height:1px;background:rgba(255,255,255,0.06);margin:4px 0"></div>
     <!-- SERVER ICONS INSERTED HERE -->
   </nav>
   <aside class="sidebar" id="sidebar">
@@ -448,18 +449,36 @@
       <div class="modal-title">Server Settings</div>
       <button onclick="closeServerSettings()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
     </div>
-    <div class="server-banner-upload" id="ss-banner-area" onclick="document.getElementById('ss-banner-input').click()">Click to upload banner</div>
-    <input type="file" id="ss-banner-input" accept="image/*" style="display:none" onchange="onSSBannerSelected()">
-    <div class="field"><label>Server Name</label><input type="text" id="ss-name" maxlength="40"/></div>
-    <div class="field"><label>Channel Count</label><input type="number" id="ss-channels" min="1" max="20"/></div>
-    <div class="setting-row" style="margin-bottom:16px">
-      <div class="setting-label">Discoverable<small>Allow users to find and request access</small></div>
-      <label class="toggle"><input type="checkbox" id="ss-discoverable"><span class="toggle-slider"></span></label>
+    <div class="modal-tabs" style="margin-bottom:16px">
+      <button class="modal-tab active" onclick="switchServerSettingsTab('general')">General</button>
+      <button class="modal-tab" onclick="switchServerSettingsTab('members')">Members</button>
     </div>
-    <button class="btn-primary" onclick="submitServerEdit()">Save Changes</button>
-    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
-    <button class="btn-primary btn-danger" onclick="submitDeleteServer()">Delete Server</button>
-    <button class="btn-ghost" onclick="closeServerSettings()">Cancel</button>
+
+    <!-- General tab -->
+    <div id="ss-tab-general">
+      <div class="server-banner-upload" id="ss-banner-area" onclick="document.getElementById('ss-banner-input').click()">Click to upload banner</div>
+      <input type="file" id="ss-banner-input" accept="image/*" style="display:none" onchange="onSSBannerSelected()">
+      <div class="field"><label>Server Name</label><input type="text" id="ss-name" maxlength="40"/></div>
+      <div class="field"><label>Channel Count</label><input type="number" id="ss-channels" min="1" max="20"/></div>
+      <div class="setting-row" style="margin-bottom:16px">
+        <div class="setting-label">Discoverable<small>Allow users to find and request access</small></div>
+        <label class="toggle"><input type="checkbox" id="ss-discoverable"><span class="toggle-slider"></span></label>
+      </div>
+      <button class="btn-primary" onclick="submitServerEdit()">Save Changes</button>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+      <button class="btn-primary btn-danger" onclick="submitDeleteServer()">Delete Server</button>
+      <button class="btn-ghost" onclick="closeServerSettings()">Cancel</button>
+    </div>
+
+    <!-- Members tab -->
+    <div id="ss-tab-members" style="display:none">
+      <div class="field" style="margin-bottom:12px">
+        <label>Search Members</label>
+        <input type="text" id="ss-member-search" placeholder="Search…" oninput="onSSMemberSearch()"/>
+      </div>
+      <div id="ss-member-list" class="mgmt-user-list"></div>
+      <div class="modal-err" id="ss-member-err" style="margin-top:8px"></div>
+    </div>
   </div>
 </div>
 

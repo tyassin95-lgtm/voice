@@ -490,8 +490,6 @@ export function submitAdminPassword() {
     closeAdminModal();
     S.setOwnerCode(pw);
     // Role will be updated via the 'role-admin-granted' socket event
-    // Open management panel as a bonus after role is set
-    openAdminManagement();
   });
 }
 
@@ -596,6 +594,100 @@ export function mgmtRevokeAdmin(username) {
     notify('Revoked admin from ' + username, 'success');
     doMgmtSearch(document.getElementById('mgmt-search').value.trim());
   });
+}
+
+// ── Server Settings Tabs (per-server member management) ──
+export function switchServerSettingsTab(tab) {
+  document.getElementById('ss-tab-general').style.display = tab === 'general' ? '' : 'none';
+  document.getElementById('ss-tab-members').style.display = tab === 'members' ? '' : 'none';
+  document.querySelectorAll('#server-settings-modal .modal-tab')
+    .forEach((el, i) => el.classList.toggle('active', ['general','members'][i] === tab));
+  if (tab === 'members') renderSSMemberList();
+}
+
+export function renderSSMemberList(query = '') {
+  const list = document.getElementById('ss-member-list');
+  if (!list || !S.currentServerData) return;
+  const q = query.toLowerCase();
+  const members = S.memberList.filter(u =>
+    !q || u.username.toLowerCase().includes(q)
+  );
+  if (!members.length) { list.innerHTML = '<div class="mgmt-empty">No members found</div>'; return; }
+  list.innerHTML = members.map(u => {
+    const roleCls = 'role-' + (u.role || 'user');
+    const isOwner = u.role === 'owner';
+    const isAdmin = (S.currentServerData.admins || []).includes(u.username.toLowerCase());
+    let actions = '';
+    if (!isOwner) {
+      if (isAdmin) {
+        actions += `<button class="mgmt-btn mgmt-btn-revoke" data-action="revoke-server-admin" data-user="${esc(u.username)}">Revoke Admin</button>`;
+      } else {
+        actions += `<button class="mgmt-btn mgmt-btn-grant" data-action="grant-server-admin" data-user="${esc(u.username)}">Grant Admin</button>`;
+      }
+      actions += `<button class="mgmt-btn mgmt-btn-revoke" style="margin-left:4px" data-action="kick-server" data-user="${esc(u.username)}">Kick</button>`;
+    }
+    return `<div class="mgmt-user-row">
+      <div class="mgmt-user-avatar">${esc(u.username[0].toUpperCase())}</div>
+      <div class="mgmt-user-info"><div class="mgmt-user-name">${esc(u.username)}</div></div>
+      <span class="mgmt-role-badge ${roleCls}">${esc(isAdmin ? 'admin' : (u.role || 'user'))}</span>
+      ${actions}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const action = this.getAttribute('data-action');
+      const username = this.getAttribute('data-user');
+      if (action === 'grant-server-admin') ssGrantAdmin(username);
+      else if (action === 'revoke-server-admin') ssRevokeAdmin(username);
+      else if (action === 'kick-server') ssKickMember(username);
+    });
+  });
+}
+
+export function onSSMemberSearch() {
+  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
+}
+
+async function ssGrantAdmin(targetUsername) {
+  const res = await fetch('/voice/api/servers/promote-admin', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownerCode: S.ownerCode, serverId: S.currentServerId, targetUsername })
+  });
+  const data = await res.json();
+  if (!data.ok) return notify(data.error || 'Failed', 'error');
+  notify('Admin granted to ' + targetUsername, 'success');
+  await loadServerList();
+  if (S.currentServerId) joinServer(S.currentServerId);
+  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
+}
+
+async function ssRevokeAdmin(targetUsername) {
+  const res = await fetch('/voice/api/servers/demote-admin', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ownerCode: S.ownerCode, serverId: S.currentServerId, targetUsername })
+  });
+  const data = await res.json();
+  if (!data.ok) return notify(data.error || 'Failed', 'error');
+  notify('Admin revoked from ' + targetUsername, 'success');
+  await loadServerList();
+  if (S.currentServerId) joinServer(S.currentServerId);
+  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
+}
+
+async function ssKickMember(targetUsername) {
+  if (!confirm(`Remove ${targetUsername} from this server?`)) return;
+  const res = await fetch('/voice/api/servers/remove-member', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: S.myUsername, password: S.myPassword, serverId: S.currentServerId, targetUsername })
+  });
+  const data = await res.json();
+  if (!data.ok) return notify(data.error || 'Failed', 'error');
+  socket.emit('admin-remove-from-server', { targetUsername });
+  notify(targetUsername + ' removed from server', 'success');
+  await loadServerList();
+  if (S.currentServerId) joinServer(S.currentServerId);
+  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
 }
 
 // ── Broadcast ──
@@ -1551,6 +1643,10 @@ export function renderServerRail() {
   const logo = rail.querySelector('.nav-rail-logo');
   rail.innerHTML = '';
   if (logo) rail.appendChild(logo);
+  // Re-add separator after logo
+  const sep = document.createElement('div');
+  sep.style.cssText = 'width:32px;height:1px;background:rgba(255,255,255,0.06);margin:4px 0';
+  rail.appendChild(sep);
 
   for (const srv of S.myServers) {
     const icon = document.createElement('div');
