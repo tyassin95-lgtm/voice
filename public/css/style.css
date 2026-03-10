@@ -598,3 +598,41 @@
     .profile-editor-card { max-width: 100%; border-radius: 4px; }
     .pe-fields { padding: 16px; }
   }
+
+/* ═══ Screen Share ═══ */
+.member-card.streaming-card {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 8px rgba(88,101,242,0.35);
+  cursor: pointer;
+}
+.tag-streaming {
+  background: var(--accent); color: #fff;
+}
+#stream-viewer-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+.stream-viewer-container {
+  display: flex; flex-direction: column;
+  max-width: 1200px; width: 95vw;
+  max-height: 90vh;
+  background: #1e1f22; border-radius: 8px;
+  overflow: hidden;
+}
+.stream-viewer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--panel);
+  color: var(--text); font-weight: 600; font-size: 14px;
+}
+.stream-viewer-close {
+  background: none; border: none; color: var(--text-2);
+  font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+}
+.stream-viewer-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+#stream-viewer-video {
+  width: 100%; max-height: calc(90vh - 44px);
+  object-fit: contain; background: #000;
+}

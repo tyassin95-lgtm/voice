@@ -20,8 +20,10 @@ import {
   onInputDeviceChange, onOutputDeviceChange, populateDeviceList,
   openProfileModal, closeProfileModal,
   openProfileEditor, closeProfileEditor, onPEBannerColorChange, onPEStatusInput, onPEAvatarSelected, savePEProfile,
-  filterMemberSidebar
+  filterMemberSidebar,
+  toggleScreenShare
 } from './ui-controller.js';
+import { requestWatchStream } from './stream-engine.js';
 import { playSound } from './utils.js';
 
 // ── Expose functions to inline handlers in HTML ──
@@ -79,6 +81,8 @@ window.onPEStatusInput        = onPEStatusInput;
 window.onPEAvatarSelected     = onPEAvatarSelected;
 window.savePEProfile          = savePEProfile;
 window.filterMemberSidebar    = filterMemberSidebar;
+window.toggleScreenShare      = toggleScreenShare;
+window._watchStream           = requestWatchStream;
 
 // ── Keyboard event handlers ──
 document.addEventListener('keydown', e => {

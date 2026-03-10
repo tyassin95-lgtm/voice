@@ -76,6 +76,10 @@ function registerSocketHandlers(io) {
     socket.on('leave-party', () => {
       const user = users[socket.id];
       if (!user || user.party === null) return;
+      if (user.isStreaming) {
+        user.isStreaming = false;
+        socket.to(`party-${user.party}`).emit('stream-ended', { streamerId: socket.id });
+      }
       parties[user.party].delete(socket.id);
       socket.leave(`party-${user.party}`);
       socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
@@ -323,9 +327,54 @@ function registerSocketHandlers(io) {
     }
   });
 
+    // ── Screen share signaling ──
+    socket.on('stream-start', () => {
+      const user = users[socket.id];
+      if (!user) return;
+      user.isStreaming = true;
+      io.emit('party-update', getPartyList());
+      socket.to(`party-${user.party}`).emit('stream-available', { streamerId: socket.id, streamerName: user.username });
+    });
+
+    socket.on('stream-stop', () => {
+      const user = users[socket.id];
+      if (!user) return;
+      user.isStreaming = false;
+      io.emit('party-update', getPartyList());
+      if (user.party !== null) socket.to(`party-${user.party}`).emit('stream-ended', { streamerId: socket.id });
+    });
+
+    socket.on('stream-watch-request', ({ streamerId }) => {
+      const user = users[socket.id];
+      if (!user) return;
+      socket.to(streamerId).emit('stream-watch-request', { watcherId: socket.id, watcherName: user.username });
+    });
+
+    socket.on('stream-offer', ({ watcherId, offer }) => {
+      const user = users[socket.id];
+      if (!user) return;
+      socket.to(watcherId).emit('stream-offer', { streamerId: socket.id, offer });
+    });
+
+    socket.on('stream-answer', ({ streamerId, answer }) => {
+      const user = users[socket.id];
+      if (!user) return;
+      socket.to(streamerId).emit('stream-answer', { watcherId: socket.id, answer });
+    });
+
+    socket.on('stream-ice', ({ targetId, candidate }) => {
+      const user = users[socket.id];
+      if (!user) return;
+      socket.to(targetId).emit('stream-ice', { fromId: socket.id, candidate });
+    });
+
     socket.on('disconnect', () => {
       const user = users[socket.id];
       if (user) {
+        if (user.isStreaming && user.party !== null) {
+          user.isStreaming = false;
+          socket.to(`party-${user.party}`).emit('stream-ended', { streamerId: socket.id });
+        }
         if (user.party !== null) {
           parties[user.party].delete(socket.id);
           socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
