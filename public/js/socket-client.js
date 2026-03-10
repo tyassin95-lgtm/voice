@@ -51,7 +51,8 @@ socket.on('role-admin-granted', ({ role }) => {
   S.setIsAdmin(true);
   document.getElementById('broadcaster-toggle').style.display = '';
   updateRoleBadge();
-  notify('⚡ Admin powers activated (role: ' + role + ')', 'success');
+  renderServerRail(); // Re-render to show '+' create server button for owners
+  notify('⚡ Role activated: ' + role, 'success');
   renderMainPanel();
 });
 
@@ -94,9 +95,9 @@ socket.on('disconnect', () => {
   document.getElementById('status-text').textContent = 'Disconnected…';
 });
 
-// ── Init: server no longer sends party data, client joins server first ──
-socket.on('init', ({ memberList }) => {
-  if (memberList) { S.setMemberList(memberList); renderMemberSidebar(); }
+// ── Init: server no longer sends member list, client joins server first ──
+socket.on('init', () => {
+  // nothing needed here now
 });
 
 // ── Server init: received when joining a server ──
@@ -115,6 +116,7 @@ socket.on('party-update', (partyList) => {
 });
 
 socket.on('member-list', (memberList) => {
+  if (!S.currentServerId) return; // don't render if not in a server
   S.setMemberList(memberList);
   renderMemberSidebar();
 });

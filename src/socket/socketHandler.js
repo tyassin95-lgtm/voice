@@ -5,22 +5,37 @@ const { loadServers, saveServers } = require('../services/serverService');
 
 function registerSocketHandlers(io) {
 
-  // Helper: build a member list of ALL registered users with online status
-  function getMemberList() {
+  // Helper: build a member list scoped to a specific server
+  function getMemberListForServer(serverId) {
     const accounts = loadAccounts();
-    const onlineUsernames = new Set();
-    for (const u of Object.values(users)) {
-      if (u.username) onlineUsernames.add(u.username.toLowerCase());
+    const servers = loadServers();
+    const srv = servers[serverId];
+    if (!srv) return [];
+    const allowed = new Set([...(srv.members || []), ...(srv.admins || [])]);
+    const onlineUsernames = new Set(
+      Object.values(users).filter(u => u.username).map(u => u.username.toLowerCase())
+    );
+    return Object.values(accounts)
+      .filter(acc => allowed.has(acc.username.toLowerCase()))
+      .map(acc => ({
+        username:     acc.username,
+        role:         acc.role || 'user',
+        avatarUrl:    acc.avatarUrl || '',
+        bannerColor:  acc.bannerColor || '#5865f2',
+        bio:          acc.bio || '',
+        customStatus: acc.customStatus || '',
+        online:       onlineUsernames.has(acc.username.toLowerCase())
+      }));
+  }
+
+  // Broadcast member list only to sockets in the same server
+  function broadcastMemberList(serverId) {
+    const list = getMemberListForServer(serverId);
+    for (const [sid, u] of Object.entries(users)) {
+      if (u.serverId === serverId) {
+        io.to(sid).emit('member-list', list);
+      }
     }
-    return Object.values(accounts).map(acc => ({
-      username:     acc.username,
-      role:         acc.role || 'user',
-      avatarUrl:    acc.avatarUrl || '',
-      bannerColor:  acc.bannerColor || '#5865f2',
-      bio:          acc.bio || '',
-      customStatus: acc.customStatus || '',
-      online:       onlineUsernames.has(acc.username.toLowerCase())
-    }));
   }
 
   // Broadcast party list only to sockets in the same server
@@ -35,8 +50,8 @@ function registerSocketHandlers(io) {
 
   io.on('connection', (socket) => {
     console.log('Connected:', socket.id);
-    // Don't send party data on init — client will join a server first
-    socket.emit('init', { memberList: getMemberList() });
+    // Don't send party data or member list on init — client will join a server first
+    socket.emit('init', {});
 
     socket.on('join', ({ username }) => {
       // Look up persistent role from accounts
@@ -46,7 +61,15 @@ function registerSocketHandlers(io) {
       const autoAdmin = role === 'admin' || role === 'owner';
       users[socket.id] = { username, party: null, serverId: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role, avatarUrl: acc?.avatarUrl || '', bannerColor: acc?.bannerColor || '#5865f2', bio: acc?.bio || '' };
       console.log(`${username} joined (role: ${role}${autoAdmin ? ', auto-admin' : ''})`);
-      io.emit('member-list', getMemberList());
+      // User's online status changed — broadcast to servers where this user is a member
+      const unameLower = username?.toLowerCase();
+      if (unameLower) {
+        const servers = loadServers();
+        for (const [srvId, srv] of Object.entries(servers)) {
+          const members = new Set([...(srv.members || []), ...(srv.admins || [])]);
+          if (members.has(unameLower)) broadcastMemberList(srvId);
+        }
+      }
       // Notify the client of their role-based admin status
       if (autoAdmin) socket.emit('role-admin-granted', { role });
     });
@@ -67,7 +90,8 @@ function registerSocketHandlers(io) {
         const srv = servers[user.serverId];
         if (srv) broadcastPartyList(user.serverId, srv.channels);
       }
-      io.emit('member-list', getMemberList());
+      // Broadcast updated member list to the user's current server
+      if (user.serverId) broadcastMemberList(user.serverId);
     });
 
     // ── Server: join a server context ──
@@ -111,6 +135,8 @@ function registerSocketHandlers(io) {
         server: serverData,
         partyList: getPartyList(serverId, srv.channels)
       });
+      // Send scoped member list for this server
+      socket.emit('member-list', getMemberListForServer(serverId));
     });
 
     // ── Server: leave server context ──
@@ -213,13 +239,26 @@ function registerSocketHandlers(io) {
       }
     });
 
-    // ── Owner: verify owner code (opens management panel on client) ──
+    // ── Owner: verify owner code and persist owner role ──
     socket.on('claim-admin', ({ password }, cb) => {
       if (typeof cb !== 'function') return;
       if (password !== OWNER_CODE) return cb({ ok: false, error: 'Wrong password' });
       const user = users[socket.id];
       if (!user) return cb({ ok: false });
-      cb({ ok: true, isOwner: true });
+
+      // Persist owner role
+      const accounts = loadAccounts();
+      const key = user.username?.toLowerCase();
+      if (accounts[key]) {
+        accounts[key].role = 'owner';
+        saveAccounts(accounts);
+      }
+      user.role = 'owner';
+      user.isAdmin = true;
+
+      // Notify client of role upgrade
+      socket.emit('role-admin-granted', { role: 'owner' });
+      cb({ ok: true });
     });
 
     // ── Deprecated: kept for backwards compatibility ──
@@ -451,8 +490,16 @@ function registerSocketHandlers(io) {
           if (srv) broadcastPartyList(user.serverId, srv.channels);
         }
         if (user.isBroadcaster) io.emit('broadcaster-left', { socketId: socket.id });
+        const unameLower = user.username?.toLowerCase();
         delete users[socket.id];
-        io.emit('member-list', getMemberList());
+        // User went offline — broadcast to all servers where they are a member
+        if (unameLower) {
+          const servers = loadServers();
+          for (const [srvId, srv] of Object.entries(servers)) {
+            const members = new Set([...(srv.members || []), ...(srv.admins || [])]);
+            if (members.has(unameLower)) broadcastMemberList(srvId);
+          }
+        }
       }
       console.log('Disconnected:', socket.id);
     });
