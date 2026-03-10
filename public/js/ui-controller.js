@@ -82,12 +82,26 @@ export function doGuest() {
 export function enterApp() {
   document.getElementById('auth-modal').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
-  document.getElementById('header-username').textContent = S.myUsername;
-  document.getElementById('header-avatar').textContent   = S.myUsername[0].toUpperCase();
   document.getElementById('settings-save-row').style.display = S.isGuest ? 'none' : 'block';
   document.getElementById('settings-sub').textContent = S.isGuest
     ? 'Guest — settings not saved'
     : `Signed in as ${S.myUsername}`;
+  // Sync sidebar user panel
+  const sidebarAvatar   = document.getElementById('sidebar-avatar');
+  const sidebarUsername = document.getElementById('sidebar-username');
+  if (sidebarAvatar) {
+    if (S.myAvatarUrl) {
+      sidebarAvatar.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><span class="status-dot connected" id="status-dot"></span>`;
+    } else {
+      sidebarAvatar.textContent = S.myUsername[0].toUpperCase();
+      // Re-add the status dot
+      const dot = document.createElement('span');
+      dot.className = 'status-dot connected';
+      dot.id = 'status-dot';
+      sidebarAvatar.appendChild(dot);
+    }
+  }
+  if (sidebarUsername) sidebarUsername.textContent = S.myUsername;
   socket.emit('join', { username: S.myUsername });
   initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
   applySettingsUI();
@@ -123,6 +137,10 @@ export function applySettingsUI() {
   const ncStored = localStorage.getItem('voice_noise_cancelation_enabled');
   if (ncStored !== null) S.settings.noiseCancelation = ncStored === 'true';
   document.getElementById('toggle-noise-cancel').checked = S.settings.noiseCancelation !== false;
+  const ownerLoginRow = document.getElementById('owner-login-row');
+  const ownerLoginContent = document.getElementById('owner-login-content');
+  if (ownerLoginRow) ownerLoginRow.style.display = S.isAdmin ? 'none' : 'block';
+  if (ownerLoginContent) ownerLoginContent.style.display = S.isAdmin ? 'none' : 'block';
 }
 
 export function openSettings() {
@@ -1136,6 +1154,10 @@ export function updateRoleBadge() {
     badgeAdmin.classList.add('hidden');
     badgeOwner.classList.add('hidden');
   }
+  const ownerLoginRow = document.getElementById('owner-login-row');
+  const ownerLoginContent = document.getElementById('owner-login-content');
+  if (ownerLoginRow) ownerLoginRow.style.display = S.isAdmin ? 'none' : 'block';
+  if (ownerLoginContent) ownerLoginContent.style.display = S.isAdmin ? 'none' : 'block';
 }
 
 // ── Logout ──
@@ -1268,6 +1290,16 @@ export async function onAvatarFileSelected() {
     if (!data.ok) return notify(data.error || 'Upload failed', 'error');
     S.setMyAvatarUrl(data.avatarUrl);
     updateAvatarPreview();
+    // Sync sidebar avatar
+    const sidebarAvatar = document.getElementById('sidebar-avatar');
+    if (sidebarAvatar) {
+      if (data.avatarUrl) {
+        sidebarAvatar.innerHTML = `<img src="${esc(data.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover"><span class="status-dot connected" id="status-dot"></span>`;
+      } else {
+        sidebarAvatar.innerHTML = `<span class="status-dot connected" id="status-dot"></span>`;
+        sidebarAvatar.prepend(document.createTextNode(S.myUsername[0].toUpperCase()));
+      }
+    }
     socket.emit('update-profile', { avatarUrl: data.avatarUrl, bannerColor: S.myBannerColor, bio: S.myBio });
     notify('Avatar uploaded ✓', 'success');
   } catch (e) {
