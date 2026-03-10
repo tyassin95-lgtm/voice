@@ -27,8 +27,8 @@ function updateOwnerLoginVisibility() {
   const oldContent = document.getElementById('owner-login-content');
   if (oldRow)     oldRow.style.display     = 'none';
   if (oldContent) oldContent.style.display = 'none';
-  // Show the dedicated tab only when not yet admin
-  if (ownerTab)    ownerTab.style.display    = S.isAdmin ? 'none' : '';
+  // Always show the dedicated owner tab (admins/owners should still be able to view it)
+  if (ownerTab)    ownerTab.style.display    = '';
   if (ownerContent) ownerContent.style.display = 'none'; // tab switching handles content visibility
 }
 

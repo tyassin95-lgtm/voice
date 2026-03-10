@@ -263,6 +263,7 @@
     </div>
     <span class="role-badge role-badge-admin hidden" id="badge-admin">Admin</span>
     <span class="role-badge role-badge-owner hidden" id="badge-owner">Owner</span>
+    <button class="profile-btn" onclick="openProfileEditor()" aria-label="Edit Profile">👤</button>
     <button class="members-btn" onclick="toggleMemberSidebar()" aria-label="Members">👥</button>
   </header>
 
@@ -361,7 +362,7 @@
     <div class="pe-preview">
       <div class="pe-banner" id="pe-banner-preview"></div>
       <div class="pe-avatar-wrap">
-        <div class="pe-avatar" id="pe-avatar-preview"></div>
+        <div class="pe-avatar" id="pe-avatar-preview" onclick="document.getElementById('pe-avatar-input').click()"></div>
       </div>
       <div class="pe-preview-name" id="pe-preview-name"></div>
       <div class="pe-preview-status" id="pe-preview-status"></div>

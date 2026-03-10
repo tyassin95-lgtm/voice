@@ -502,7 +502,10 @@
   .member-sidebar-overlay.open{display:block}
 
   /* ═══ MEMBERS TOGGLE BUTTON (mobile only) ═══ */
-  .members-btn{display:none;width:36px;height:36px;background:transparent;border:none;border-radius:var(--radius-sm);color:var(--text-2);font-size:18px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;margin-left:auto}
+  .profile-btn{display:none;width:36px;height:36px;background:transparent;border:none;border-radius:var(--radius-sm);color:var(--text-2);font-size:18px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;margin-left:auto}
+  .profile-btn:hover{color:var(--text)}
+  @media(max-width:640px){.profile-btn{display:flex}}
+  .members-btn{display:none;width:36px;height:36px;background:transparent;border:none;border-radius:var(--radius-sm);color:var(--text-2);font-size:18px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation}
   .members-btn:hover{color:var(--text)}
 
   /* ═══ MEMBER SIDEBAR MOBILE OVERRIDE ═══ */
