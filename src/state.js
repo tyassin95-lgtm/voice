@@ -1,9 +1,9 @@
 const { NUM_PARTIES } = require('./config');
 
-// socketId -> { username, party, serverId, isBroadcaster, isAdmin, serverMuted, selfMuted, selfDeafened }
+// socketId -> { username, party, isBroadcaster, isAdmin, serverMuted, selfMuted, selfDeafened }
 const users   = {};
-// String-keyed: "serverId:channelId" -> Set of socketIds
 const parties = {};
+for (let i = 1; i <= NUM_PARTIES; i++) parties[i] = new Set();
 
 function serializeUser(sid) {
   const u = users[sid];
@@ -23,12 +23,10 @@ function serializeUser(sid) {
   };
 }
 
-function getPartyList(serverId, channels) {
+function getPartyList() {
   const result = {};
-  if (!channels) return result;
-  for (const ch of channels) {
-    const key = serverId + ':' + ch.id;
-    result[ch.id] = [...(parties[key] || [])].map(serializeUser);
+  for (let i = 1; i <= NUM_PARTIES; i++) {
+    result[i] = [...parties[i]].map(serializeUser);
   }
   return result;
 }

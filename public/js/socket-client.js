@@ -5,8 +5,7 @@ import { notify } from './utils.js';
 import { handleAudioFrom, removePeerPlayer } from './audio-engine.js';
 import {
   renderSidebar, renderMainPanel, updateMyCard, updateRoleBadge,
-  updateLatencyDisplay, updateBcPauseBtn, renderMemberSidebar,
-  loadServerList, leaveCurrentServer, renderServerRail
+  updateLatencyDisplay, updateBcPauseBtn, renderMemberSidebar
 } from './ui-controller.js';
 import { playSound } from './utils.js';
 
@@ -38,7 +37,7 @@ socket.on('force-disconnect', ({ by }) => {
 });
 
 socket.on('admin-moved', ({ by, toPartyId }) => {
-  notify(`Admin ${by} moved you to channel`, 'warn');
+  notify(`Admin ${by} moved you to Party ${toPartyId}`, 'warn');
   Object.keys(S.peerPlayers).forEach(removePeerPlayer);
   S.setCurrentParty(toPartyId);
   renderSidebar();
@@ -51,8 +50,7 @@ socket.on('role-admin-granted', ({ role }) => {
   S.setIsAdmin(true);
   document.getElementById('broadcaster-toggle').style.display = '';
   updateRoleBadge();
-  renderServerRail(); // Re-render to show '+' create server button for owners
-  notify('⚡ Role activated: ' + role, 'success');
+  notify('⚡ Admin powers activated (role: ' + role + ')', 'success');
   renderMainPanel();
 });
 
@@ -76,9 +74,10 @@ socket.on('connect', () => {
   document.getElementById('status-text').textContent = 'Connected';
   if (S.myUsername) {
     socket.emit('join', { username: S.myUsername });
-    if (S.currentServerId && S.currentParty) socket.emit('join-party', { serverId: S.currentServerId, channelId: S.currentParty });
+    if (S.currentParty) socket.emit('join-party', { partyId: S.currentParty });
     if (S.isBroadcaster) socket.emit('set-broadcaster', { isBroadcaster: true, targets: S.bcTargets, paused: S.bcPaused });
     if (S.isAdmin) {
+      // On reconnect, role-based admins will get auto-granted via 'join' handler
       if (S.myRole !== 'admin' && S.myRole !== 'owner') {
         S.setIsAdmin(false);
         document.getElementById('broadcaster-toggle').style.display = 'none';
@@ -95,55 +94,25 @@ socket.on('disconnect', () => {
   document.getElementById('status-text').textContent = 'Disconnected…';
 });
 
-// ── Init: server no longer sends member list, client joins server first ──
-socket.on('init', () => {
-  // nothing needed here now
-});
-
-// ── Server init: received when joining a server ──
-socket.on('server-init', ({ server, partyList }) => {
-  S.setCurrentServerData(server);
-  S.setPartyData(partyList || {});
-  renderServerRail();
+socket.on('init', ({ partyList, memberList }) => {
+  const pd = {};
+  Object.entries(partyList).forEach(([id,m]) => pd[parseInt(id)] = m);
+  S.setPartyData(pd);
+  if (memberList) { S.setMemberList(memberList); renderMemberSidebar(); }
   renderSidebar();
-  if (S.currentParty) renderMainPanel();
 });
 
 socket.on('party-update', (partyList) => {
-  S.setPartyData(partyList || {});
+  const pd = {};
+  Object.entries(partyList).forEach(([id,m]) => pd[parseInt(id)] = m);
+  S.setPartyData(pd);
   renderSidebar();
   if (S.currentParty) renderMainPanel();
 });
 
 socket.on('member-list', (memberList) => {
-  if (!S.currentServerId) return; // don't render if not in a server
   S.setMemberList(memberList);
   renderMemberSidebar();
-});
-
-// ── Server lifecycle events ──
-socket.on('server-member-removed', () => {
-  notify('You have been removed from this server', 'error');
-  leaveCurrentServer();
-});
-
-socket.on('server-access-granted', () => {
-  loadServerList();
-});
-
-socket.on('server-role-updated', () => {
-  loadServerList();
-});
-
-socket.on('server-deleted', () => {
-  notify('This server has been deleted', 'error');
-  leaveCurrentServer();
-});
-
-socket.on('pending-request-update', () => {
-  // Re-render member sidebar to show updated pending requests
-  if (S.currentServerData) renderMemberSidebar();
-  renderServerRail();
 });
 
 socket.on('party-peers',      () => renderMainPanel());

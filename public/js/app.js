@@ -3,7 +3,7 @@
 import * as S from './state.js';
 import { socket } from './socket-client.js';
 import {
-  switchAuthTab, doLogin, doRegister,
+  switchAuthTab, doLogin, doRegister, doGuest,
   openSettings, closeSettings, switchSettingsTab, onSensChange, onInputVolChange,
   onPttToggle, onNoiseCancelToggle, onPttTouchToggle,
   startListeningPTT, saveSettings,
@@ -12,7 +12,6 @@ import {
   setPTTTransmit, toggleMute, toggleDeafen,
   onAdminClick, closeAdminModal, submitAdminPassword,
   closeAdminManagement, onMgmtSearch,
-  switchServerSettingsTab, onSSMemberSearch,
   toggleBroadcaster, closeBroadcastModal, bcToggleAll, startBroadcast,
   onBroadcastPauseToggle,
   openPopover, closePopover, onVolSlider, toggleLocalMute,
@@ -21,14 +20,7 @@ import {
   onInputDeviceChange, onOutputDeviceChange, populateDeviceList,
   openProfileModal, closeProfileModal,
   openProfileEditor, closeProfileEditor, onPEBannerColorChange, onPEStatusInput, onPEAvatarSelected, savePEProfile,
-  filterMemberSidebar,
-  // Server management
-  loadServerList, joinServer, leaveCurrentServer,
-  openServerCreateModal, closeServerCreateModal, onSCBannerSelected, submitCreateServer,
-  openServerSettings, closeServerSettings, onSSBannerSelected, submitServerEdit, submitDeleteServer,
-  openInviteModal, closeInviteModal, generateInviteCode, copyInviteCode,
-  requestServerAccess, submitInlineInvite,
-  approveServerRequest, denyServerRequest
+  filterMemberSidebar
 } from './ui-controller.js';
 import { playSound } from './utils.js';
 
@@ -37,6 +29,7 @@ import { playSound } from './utils.js';
 window.switchAuthTab        = switchAuthTab;
 window.doLogin              = doLogin;
 window.doRegister           = doRegister;
+window.doGuest              = doGuest;
 window.openSettings         = openSettings;
 window.closeSettings        = closeSettings;
 window.switchSettingsTab    = switchSettingsTab;
@@ -58,8 +51,6 @@ window.closeAdminModal      = closeAdminModal;
 window.submitAdminPassword  = submitAdminPassword;
 window.closeAdminManagement = closeAdminManagement;
 window.onMgmtSearch         = onMgmtSearch;
-window.switchServerSettingsTab = switchServerSettingsTab;
-window.onSSMemberSearch        = onSSMemberSearch;
 window.toggleBroadcaster    = toggleBroadcaster;
 window.closeBroadcastModal  = closeBroadcastModal;
 window.bcToggleAll          = bcToggleAll;
@@ -88,28 +79,6 @@ window.onPEStatusInput        = onPEStatusInput;
 window.onPEAvatarSelected     = onPEAvatarSelected;
 window.savePEProfile          = savePEProfile;
 window.filterMemberSidebar    = filterMemberSidebar;
-
-// Server management
-window.loadServerList          = loadServerList;
-window.joinServer              = joinServer;
-window.leaveCurrentServer      = leaveCurrentServer;
-window.openServerCreateModal   = openServerCreateModal;
-window.closeServerCreateModal  = closeServerCreateModal;
-window.onSCBannerSelected     = onSCBannerSelected;
-window.submitCreateServer      = submitCreateServer;
-window.openServerSettings      = openServerSettings;
-window.closeServerSettings     = closeServerSettings;
-window.onSSBannerSelected     = onSSBannerSelected;
-window.submitServerEdit        = submitServerEdit;
-window.submitDeleteServer      = submitDeleteServer;
-window.openInviteModal         = openInviteModal;
-window.closeInviteModal        = closeInviteModal;
-window.generateInviteCode      = generateInviteCode;
-window.copyInviteCode          = copyInviteCode;
-window.requestServerAccess     = requestServerAccess;
-window.submitInlineInvite      = submitInlineInvite;
-window.approveServerRequest    = approveServerRequest;
-window.denyServerRequest       = denyServerRequest;
 
 // ── Keyboard event handlers ──
 document.addEventListener('keydown', e => {

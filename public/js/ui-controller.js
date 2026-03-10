@@ -34,11 +34,11 @@ function updateOwnerLoginVisibility() {
 
 // ── Auth tab switching ──
 export function switchAuthTab(tab) {
-  ['login','register'].forEach(t => {
+  ['login','register','guest'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('.modal-tab').forEach((el, i) => {
-    el.classList.toggle('active', ['login','register'][i] === tab);
+    el.classList.toggle('active', ['login','register','guest'][i] === tab);
   });
 }
 
@@ -57,6 +57,7 @@ export async function doLogin() {
     if (!data.ok) return setErr('login-err', data.error);
     S.setMyUsername(data.username);
     S.setMyPassword(password);
+    S.setIsGuest(false);
     S.setMyRole(data.role || 'user');
     S.setMyAvatarUrl(data.avatarUrl || '');
     S.setMyBannerColor(data.bannerColor || '#5865f2');
@@ -86,6 +87,7 @@ export async function doRegister() {
     if (!data.ok) return setErr('reg-err', data.error);
     S.setMyUsername(username);
     S.setMyPassword(password);
+    S.setIsGuest(false);
     notify('Account created! Welcome, ' + username, 'success');
     enterApp();
   } catch (e) {
@@ -93,11 +95,21 @@ export async function doRegister() {
   }
 }
 
-export async function enterApp() {
+export function doGuest() {
+  const name = document.getElementById('guest-name').value.trim();
+  if (!name) return setErr('guest-err', 'Enter a name');
+  S.setMyUsername(name);
+  S.setIsGuest(true);
+  enterApp();
+}
+
+export function enterApp() {
   document.getElementById('auth-modal').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
-  document.getElementById('settings-save-row').style.display = 'block';
-  document.getElementById('settings-sub').textContent = `Signed in as ${S.myUsername}`;
+  document.getElementById('settings-save-row').style.display = S.isGuest ? 'none' : 'block';
+  document.getElementById('settings-sub').textContent = S.isGuest
+    ? 'Guest — settings not saved'
+    : `Signed in as ${S.myUsername}`;
   // Sync sidebar user panel
   syncSidebarAvatar();
   const sidebarUsername = document.getElementById('sidebar-username');
@@ -106,7 +118,6 @@ export async function enterApp() {
   initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
   applySettingsUI();
   initPTTTouchButton();
-  await loadServerList();
 }
 
 export function applySettings(s) {
@@ -300,7 +311,7 @@ export function startListeningPTT() {
 }
 
 export async function saveSettings() {
-  if (!S.myPassword) return;
+  if (S.isGuest || !S.myPassword) return;
   try {
     const res = await fetch('/voice/api/save-settings', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -488,8 +499,9 @@ export function submitAdminPassword() {
       return;
     }
     closeAdminModal();
+    // Owner code was correct — open admin management panel
     S.setOwnerCode(pw);
-    // Role will be updated via the 'role-admin-granted' socket event
+    openAdminManagement();
   });
 }
 
@@ -596,100 +608,6 @@ export function mgmtRevokeAdmin(username) {
   });
 }
 
-// ── Server Settings Tabs (per-server member management) ──
-export function switchServerSettingsTab(tab) {
-  document.getElementById('ss-tab-general').style.display = tab === 'general' ? '' : 'none';
-  document.getElementById('ss-tab-members').style.display = tab === 'members' ? '' : 'none';
-  document.querySelectorAll('#server-settings-modal .modal-tab')
-    .forEach((el, i) => el.classList.toggle('active', ['general','members'][i] === tab));
-  if (tab === 'members') renderSSMemberList();
-}
-
-export function renderSSMemberList(query = '') {
-  const list = document.getElementById('ss-member-list');
-  if (!list || !S.currentServerData) return;
-  const q = query.toLowerCase();
-  const members = S.memberList.filter(u =>
-    !q || u.username.toLowerCase().includes(q)
-  );
-  if (!members.length) { list.innerHTML = '<div class="mgmt-empty">No members found</div>'; return; }
-  list.innerHTML = members.map(u => {
-    const roleCls = 'role-' + (u.role || 'user');
-    const isOwner = u.role === 'owner';
-    const isAdmin = (S.currentServerData.admins || []).includes(u.username.toLowerCase());
-    let actions = '';
-    if (!isOwner) {
-      if (isAdmin) {
-        actions += `<button class="mgmt-btn mgmt-btn-revoke" data-action="revoke-server-admin" data-user="${esc(u.username)}">Revoke Admin</button>`;
-      } else {
-        actions += `<button class="mgmt-btn mgmt-btn-grant" data-action="grant-server-admin" data-user="${esc(u.username)}">Grant Admin</button>`;
-      }
-      actions += `<button class="mgmt-btn mgmt-btn-revoke" style="margin-left:4px" data-action="kick-server" data-user="${esc(u.username)}">Kick</button>`;
-    }
-    return `<div class="mgmt-user-row">
-      <div class="mgmt-user-avatar">${esc(u.username[0].toUpperCase())}</div>
-      <div class="mgmt-user-info"><div class="mgmt-user-name">${esc(u.username)}</div></div>
-      <span class="mgmt-role-badge ${roleCls}">${esc(isAdmin ? 'admin' : (u.role || 'user'))}</span>
-      ${actions}
-    </div>`;
-  }).join('');
-
-  list.querySelectorAll('[data-action]').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const action = this.getAttribute('data-action');
-      const username = this.getAttribute('data-user');
-      if (action === 'grant-server-admin') ssGrantAdmin(username);
-      else if (action === 'revoke-server-admin') ssRevokeAdmin(username);
-      else if (action === 'kick-server') ssKickMember(username);
-    });
-  });
-}
-
-export function onSSMemberSearch() {
-  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
-}
-
-async function ssGrantAdmin(targetUsername) {
-  const res = await fetch('/voice/api/servers/promote-admin', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ownerCode: S.ownerCode, serverId: S.currentServerId, targetUsername })
-  });
-  const data = await res.json();
-  if (!data.ok) return notify(data.error || 'Failed', 'error');
-  notify('Admin granted to ' + targetUsername, 'success');
-  await loadServerList();
-  if (S.currentServerId) joinServer(S.currentServerId);
-  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
-}
-
-async function ssRevokeAdmin(targetUsername) {
-  const res = await fetch('/voice/api/servers/demote-admin', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ownerCode: S.ownerCode, serverId: S.currentServerId, targetUsername })
-  });
-  const data = await res.json();
-  if (!data.ok) return notify(data.error || 'Failed', 'error');
-  notify('Admin revoked from ' + targetUsername, 'success');
-  await loadServerList();
-  if (S.currentServerId) joinServer(S.currentServerId);
-  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
-}
-
-async function ssKickMember(targetUsername) {
-  if (!confirm(`Remove ${targetUsername} from this server?`)) return;
-  const res = await fetch('/voice/api/servers/remove-member', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: S.myUsername, password: S.myPassword, serverId: S.currentServerId, targetUsername })
-  });
-  const data = await res.json();
-  if (!data.ok) return notify(data.error || 'Failed', 'error');
-  socket.emit('admin-remove-from-server', { targetUsername });
-  notify(targetUsername + ' removed from server', 'success');
-  await loadServerList();
-  if (S.currentServerId) joinServer(S.currentServerId);
-  renderSSMemberList(document.getElementById('ss-member-search').value.trim());
-}
-
 // ── Broadcast ──
 export function toggleBroadcaster() {
   S.isBroadcaster ? stopBroadcast() : openBroadcastModal();
@@ -701,14 +619,13 @@ export function openBroadcastModal() {
   grid.innerHTML = '';
   grid.appendChild(allBtn);
 
-  const channels = S.currentServerData?.channels || [];
-  for (const ch of channels) {
-    const count = (S.partyData[ch.id] || []).length;
+  for (let i = 1; i <= 12; i++) {
+    const count = (S.partyData[i] || []).length;
     const btn = document.createElement('button');
-    btn.className = 'bc-party-btn' + (S.bcPartySelected.has(ch.id) && !S.bcAllSelected ? ' selected' : '');
-    btn.id = `bc-party-${ch.id}`;
-    btn.innerHTML = `${esc(ch.name)}<span class="bc-party-count">${count} member${count !== 1 ? 's' : ''}</span>`;
-    btn.onclick = () => bcToggleParty(ch.id);
+    btn.className = 'bc-party-btn' + (S.bcPartySelected.has(i) && !S.bcAllSelected ? ' selected' : '');
+    btn.id = `bc-party-${i}`;
+    btn.innerHTML = `Party ${i}<span class="bc-party-count">${count} member${count !== 1 ? 's' : ''}</span>`;
+    btn.onclick = () => bcToggleParty(i);
     grid.appendChild(btn);
   }
   if (!S.isBroadcaster) {
@@ -750,11 +667,10 @@ export function updateBcSelectedLabel() {
   const label = document.getElementById('bc-selected-label');
   if (!label) return;
   if (S.bcAllSelected) {
-    label.textContent = 'Broadcasting to all channels';
+    label.textContent = 'Broadcasting to all parties';
   } else {
-    const channels = S.currentServerData?.channels || [];
-    const names = [...S.bcPartySelected].map(id => channels.find(c => c.id === id)?.name || id);
-    label.textContent = `Broadcasting to: ${names.join(', ')}`;
+    const sorted = [...S.bcPartySelected].sort((a,b) => a-b);
+    label.textContent = `Broadcasting to: Party ${sorted.join(', Party ')}`;
   }
 }
 
@@ -768,7 +684,7 @@ export function startBroadcast() {
   document.getElementById('broadcaster-toggle').classList.add('active-red');
   socket.emit('set-broadcaster', { isBroadcaster: true, targets: S.bcTargets, paused: false });
 
-  const label = S.bcTargets === 'all' ? 'all channels' : 'selected channels';
+  const label = S.bcTargets === 'all' ? 'all parties' : `Party ${[...S.bcPartySelected].sort((a,b)=>a-b).join(', ')}`;
   notify(`🔴 Broadcasting to ${label}`, 'success');
   updateBcPauseBtn();
 }
@@ -937,31 +853,16 @@ export function closeMemberSidebar() {
 export function renderSidebar() {
   const list = document.getElementById('party-list');
   list.innerHTML = '';
-
-  // Show server header if we're in a server
-  if (S.currentServerData) {
-    const hdr = document.createElement('div');
-    hdr.className = 'sidebar-server-header';
-    const bannerThumb = S.currentServerData.bannerUrl
-      ? `<div class="sidebar-server-thumb" style="background-image:url('${esc(S.currentServerData.bannerUrl)}')"></div>`
-      : '';
-    const isServerAdmin = S.myRole === 'owner' || (S.currentServerData.admins || []).includes(S.myUsername.toLowerCase());
-    const gearBtn = isServerAdmin ? `<button class="sidebar-server-gear" onclick="openServerSettings()">⚙</button>` : '';
-    hdr.innerHTML = `${bannerThumb}<span class="sidebar-server-name">${esc(S.currentServerData.name)}</span>${gearBtn}`;
-    list.appendChild(hdr);
-  }
-
-  const channels = S.currentServerData?.channels || [];
-  for (const ch of channels) {
-    const members = S.partyData[ch.id] || [];
+  for (let i = 1; i <= 12; i++) {
+    const members = S.partyData[i] || [];
     const count   = members.length;
-    const active  = S.currentParty === ch.id;
+    const active  = S.currentParty === i;
 
     // Channel row
     const div = document.createElement('div');
     div.className = 'channel-item' + (active ? ' active' : '') + (count > 0 ? ' has-members' : '');
-    div.onclick = () => { joinParty(ch.id); closeSidebar(); };
-    div.innerHTML = `<span class="ch-icon">${active?'🔊':'🔈'}</span><span class="ch-label">${esc(ch.name)}</span><span class="ch-count">${count||''}</span>`;
+    div.onclick = () => { joinParty(i); closeSidebar(); };
+    div.innerHTML = `<span class="ch-icon">${active?'🔊':'🔈'}</span><span class="ch-label">Party ${i}</span><span class="ch-count">${count||''}</span>`;
     
     // Make channel a drop target for admins
     if (S.isAdmin) {
@@ -979,7 +880,7 @@ export function renderSidebar() {
         div.classList.remove('drag-over');
         const targetId = e.dataTransfer.getData('text/plain');
         if (targetId && targetId !== socket.id) {
-          socket.emit('admin-move', { targetId, toPartyId: ch.id });
+          socket.emit('admin-move', { targetId, toPartyId: i });
         }
       };
     }
@@ -1083,18 +984,16 @@ export function renderMainPanel() {
   const view     = document.getElementById('party-view');
   const leaveBtn = document.getElementById('btn-leave');
   const chanName = document.getElementById('header-channel-name');
-  const channelName = S.currentServerData?.channels?.find(c => c.id === S.currentParty)?.name || 'No Channel';
   if (leaveBtn) leaveBtn.style.display = S.currentParty ? 'flex' : 'none';
-  if (chanName) chanName.textContent = S.currentParty ? channelName : 'No Channel';
+  if (chanName) chanName.textContent = S.currentParty ? `Party ${S.currentParty}` : 'No Channel';
   updateBcPauseBtn();
   if (!S.currentParty) { empty.style.display='flex'; view.style.display='none'; return; }
   empty.style.display='none'; view.style.display='block';
 
   const members = S.partyData[S.currentParty] || [];
   const broadcasters = [];
-  const channels = S.currentServerData?.channels || [];
-  for (const ch of channels) {
-    (S.partyData[ch.id]||[]).forEach(m => {
+  for (let i = 1; i <= 12; i++) {
+    (S.partyData[i]||[]).forEach(m => {
       if (m.isBroadcaster && m.socketId !== socket.id && !broadcasters.find(b=>b.socketId===m.socketId))
         broadcasters.push(m);
     });
@@ -1103,7 +1002,7 @@ export function renderMainPanel() {
   let html = `<div class="party-header">
     <div class="party-header-icon">🎙️</div>
     <div>
-      <div class="party-title">${esc(channelName)}</div>
+      <div class="party-title">Party ${S.currentParty}</div>
       <div class="party-sub">${members.length} member${members.length!==1?'s':''} · Click a user to adjust volume${S.isAdmin?' · Admin mode active':''}</div>
     </div>
   </div>`;
@@ -1111,7 +1010,7 @@ export function renderMainPanel() {
   if (broadcasters.length > 0) {
     const bcInfo = broadcasters.map(b => {
       const targets = b.broadcastTargets;
-      const targetText = targets === 'all' ? 'all channels' : 'selected channels';
+      const targetText = targets === 'all' ? 'all parties' : `Party ${Array.isArray(targets) ? targets.sort((a,b)=>a-b).join(', ') : targets}`;
       return `${esc(b.username)} → ${targetText}`;
     }).join(' | ');
     html += `<div class="broadcast-banner"><div class="bc-banner-dot" style="${broadcasters.some(b=>b.broadcastPaused)?'animation:none;opacity:0.4':''}"></div><div class="bc-banner-text">${broadcasters.some(b=>b.broadcastPaused)?'⏸ PAUSED —':'LIVE BROADCAST —'} ${bcInfo}</div></div>`;
@@ -1178,11 +1077,11 @@ function memberCardHTML(m, isMe) {
 }
 
 // ── Join / Leave ──
-export function joinParty(channelId) {
-  if (S.currentParty === channelId) return;
+export function joinParty(partyId) {
+  if (S.currentParty === partyId) return;
   Object.keys(S.peerPlayers).forEach(removePeerPlayer);
-  S.setCurrentParty(channelId);
-  socket.emit('join-party', { serverId: S.currentServerId, channelId });
+  S.setCurrentParty(partyId);
+  socket.emit('join-party', { partyId });
   playSound('join');
   if (S.audioCtx && S.audioCtx.state === 'suspended') S.audioCtx.resume();
   startPingLoop();
@@ -1270,7 +1169,6 @@ export function updateRoleBadge() {
 export function logout() {
   if (!confirm('Sign out of OathlyVoice?')) return;
   if (S.currentParty) socket.emit('leave-party');
-  if (S.currentServerId) socket.emit('leave-server');
   if (S.isBroadcaster) { S.setIsBroadcaster(false); socket.emit('set-broadcaster', { isBroadcaster: false }); }
   if (S.micVAD) { try { S.micVAD.destroy(); } catch(e){} S.setMicVAD(null); }
   if (S.processorNode?.port) { try { S.processorNode.port.postMessage('stop'); } catch(e){} }
@@ -1286,35 +1184,11 @@ export function logout() {
 export function renderMemberSidebar() {
   const list = document.getElementById('member-sidebar-list');
   if (!list) return;
-  if (!S.currentServerId) {
-    list.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-
-  // Pending requests section (admin/owner only)
-  const isServerAdmin = S.myRole === 'owner' || (S.currentServerData?.admins || []).includes(S.myUsername.toLowerCase());
-  const pendingRequests = S.currentServerData?.pendingRequests || [];
-  if (isServerAdmin && pendingRequests.length > 0) {
-    html += `<div class="msb-pending-header">Pending Requests — ${pendingRequests.length}</div>`;
-    pendingRequests.forEach(uname => {
-      html += `<div class="msb-pending-row">
-        <span class="msb-pending-name">${esc(uname)}</span>
-        <button class="msb-pending-btn msb-pending-approve" onclick="approveServerRequest('${esc(uname)}')" title="Approve">✓</button>
-        <button class="msb-pending-btn msb-pending-deny" onclick="denyServerRequest('${esc(uname)}')" title="Deny">✕</button>
-      </div>`;
-    });
-  }
-
-  // Invite link for admins
-  if (isServerAdmin && S.currentServerData) {
-    html += `<div style="padding:8px 12px"><button class="btn-primary" style="font-size:12px;height:32px;line-height:32px" onclick="openInviteModal()">Create Invite</button></div>`;
-  }
 
   const online  = S.memberList.filter(u => u.online).sort((a,b) => a.username.localeCompare(b.username));
   const offline = S.memberList.filter(u => !u.online).sort((a,b) => a.username.localeCompare(b.username));
 
+  let html = '';
   if (online.length) {
     html += `<div class="msb-category">Online — ${online.length}</div>`;
     online.forEach(u => { html += msbUserHTML(u, true); });
@@ -1328,9 +1202,10 @@ export function renderMemberSidebar() {
   list.querySelectorAll('[data-msb-user]').forEach(el => {
     el.addEventListener('click', () => openProfileModal(el.getAttribute('data-msb-user')));
   });
+  filterMemberSidebar('');
+  // Reset search input when list re-renders
   const searchInput = document.getElementById('msb-search');
-  const currentQuery = searchInput?.value || '';
-  filterMemberSidebar(currentQuery); // re-apply existing filter, don't reset
+  if (searchInput) searchInput.value = '';
 }
 
 function msbUserHTML(u, isOnline) {
@@ -1387,7 +1262,7 @@ export function closeProfileModal() {
 
 // ── Profile Customization (settings tab) ──
 export async function saveProfile() {
-  if (!S.myPassword) return notify('Sign in to save profile', 'error');
+  if (S.isGuest || !S.myPassword) return notify('Sign in to save profile', 'error');
   const bio          = document.getElementById('profile-bio-input').value;
   const bannerColor  = document.getElementById('profile-banner-color').value;
   const customStatus = document.getElementById('profile-status-input').value;
@@ -1410,7 +1285,7 @@ export async function saveProfile() {
 }
 
 export async function onAvatarFileSelected() {
-  if (!S.myPassword) return notify('Sign in to upload avatar', 'error');
+  if (S.isGuest || !S.myPassword) return notify('Sign in to upload avatar', 'error');
   const fileInput = document.getElementById('avatar-file-input');
   if (!fileInput.files.length) return;
   const formData = new FormData();
@@ -1469,7 +1344,13 @@ export function filterMemberSidebar(query) {
 
 // ── Profile Editor Modal ──
 export function openProfileEditor() {
-  document.getElementById('pe-save-row').style.display = 'block';
+  if (S.isGuest) {
+    document.getElementById('pe-guest-notice').style.display = 'block';
+    document.getElementById('pe-save-row').style.display = 'none';
+  } else {
+    document.getElementById('pe-guest-notice').style.display = 'none';
+    document.getElementById('pe-save-row').style.display = 'block';
+  }
   // Populate fields from current state
   document.getElementById('pe-status-input').value = S.myCustomStatus || '';
   document.getElementById('pe-bio-input').value    = S.myBio || '';
@@ -1524,7 +1405,7 @@ export function onPEStatusInput(val) {
 }
 
 export async function onPEAvatarSelected() {
-  if (!S.myPassword) return notify('Sign in to upload avatar', 'error');
+  if (S.isGuest || !S.myPassword) return notify('Sign in to upload avatar', 'error');
   const fileInput = document.getElementById('pe-avatar-input');
   if (!fileInput.files.length) return;
   const formData = new FormData();
@@ -1547,7 +1428,7 @@ export async function onPEAvatarSelected() {
 }
 
 export async function savePEProfile() {
-  if (!S.myPassword) return notify('Sign in to save profile', 'error');
+  if (S.isGuest || !S.myPassword) return notify('Sign in to save profile', 'error');
   const bio          = document.getElementById('pe-bio-input').value;
   const bannerColor  = document.getElementById('pe-banner-color').value;
   const customStatus = document.getElementById('pe-status-input').value;
@@ -1566,453 +1447,6 @@ export async function savePEProfile() {
     updatePEPreview();
     notify('Profile saved ✓', 'success');
     closeProfileEditor();
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-// ═══ SERVER MANAGEMENT ═══
-
-let _scBannerFile = null; // temp store for server create banner
-let _ssBannerFile = null; // temp store for server settings banner
-
-export async function loadServerList() {
-  try {
-    const listBody = { username: S.myUsername, password: S.myPassword };
-    if (S.ownerCode) listBody.ownerCode = S.ownerCode;
-    const res = await fetch('/voice/api/servers/list', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(listBody)
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!data.ok) return;
-    S.setMyServers(data.myServers || []);
-    S.setDiscoverableServers(data.discoverableServers || []);
-    S.setPendingServers(data.pendingServers || []);
-    renderServerRail();
-    if (S.myServers.length === 0) {
-      S.setCurrentServerId(null);
-      S.setCurrentServerData(null);
-      S.setCurrentParty(null);
-      S.setPartyData({});
-      renderServerSelectionScreen();
-    } else if (!S.currentServerId || !S.myServers.find(s => s.id === S.currentServerId)) {
-      joinServer(S.myServers[0].id);
-    }
-  } catch (e) {
-    console.warn('[loadServerList]', e);
-  }
-}
-
-export function joinServer(serverId) {
-  if (S.currentParty) {
-    Object.keys(S.peerPlayers).forEach(removePeerPlayer);
-    socket.emit('leave-party');
-    S.setCurrentParty(null);
-    stopPingLoop();
-    Object.keys(S.peerLatency).forEach(k => delete S.peerLatency[k]);
-    Object.keys(S.peerLastSeq).forEach(k => delete S.peerLastSeq[k]);
-  }
-  S.setCurrentServerId(serverId);
-  socket.emit('join-server', { serverId });
-  renderServerRail();
-}
-
-export function leaveCurrentServer() {
-  if (S.currentParty) {
-    Object.keys(S.peerPlayers).forEach(removePeerPlayer);
-    socket.emit('leave-party');
-    S.setCurrentParty(null);
-    stopPingLoop();
-  }
-  socket.emit('leave-server');
-  S.setCurrentServerId(null);
-  S.setCurrentServerData(null);
-  S.setPartyData({});
-  S.setMemberList([]);
-  renderMemberSidebar();
-  renderSidebar();
-  renderMainPanel();
-  loadServerList();
-}
-
-export function renderServerRail() {
-  const rail = document.querySelector('.nav-rail');
-  if (!rail) return;
-  const logo = rail.querySelector('.nav-rail-logo');
-  rail.innerHTML = '';
-  if (logo) rail.appendChild(logo);
-  // Re-add separator after logo
-  const sep = document.createElement('div');
-  sep.className = 'nav-rail-sep';
-  rail.appendChild(sep);
-
-  for (const srv of S.myServers) {
-    const icon = document.createElement('div');
-    icon.className = 'server-icon' + (S.currentServerId === srv.id ? ' active' : '');
-    icon.title = srv.name;
-    if (srv.bannerUrl) {
-      icon.style.backgroundImage = `url('${esc(srv.bannerUrl)}')`;
-      icon.style.backgroundSize = 'cover';
-      icon.style.backgroundPosition = 'center';
-    } else {
-      icon.textContent = srv.name[0].toUpperCase();
-    }
-    icon.onclick = () => { if (S.currentServerId !== srv.id) joinServer(srv.id); };
-
-    const pendingCount = (srv.pendingRequests || []).length;
-    if (pendingCount > 0) {
-      const badge = document.createElement('span');
-      badge.className = 'server-badge';
-      badge.textContent = pendingCount;
-      icon.appendChild(badge);
-    }
-    rail.appendChild(icon);
-  }
-
-  if (S.myRole === 'owner') {
-    const addBtn = document.createElement('div');
-    addBtn.className = 'server-icon server-icon-add';
-    addBtn.textContent = '+';
-    addBtn.title = 'Create Server';
-    addBtn.onclick = () => openServerCreateModal();
-    rail.appendChild(addBtn);
-  }
-
-  const strip = document.getElementById('mobile-server-strip');
-  if (strip) {
-    strip.innerHTML = '';
-    for (const srv of S.myServers) {
-      const icon = document.createElement('div');
-      icon.className = 'server-icon' + (S.currentServerId === srv.id ? ' active' : '');
-      if (srv.bannerUrl) {
-        icon.style.backgroundImage = `url('${esc(srv.bannerUrl)}')`;
-        icon.style.backgroundSize = 'cover';
-        icon.style.backgroundPosition = 'center';
-      } else {
-        icon.textContent = srv.name[0].toUpperCase();
-      }
-      icon.onclick = () => { if (S.currentServerId !== srv.id) joinServer(srv.id); closeSidebar(); };
-      strip.appendChild(icon);
-    }
-    if (S.myRole === 'owner') {
-      const addBtn = document.createElement('div');
-      addBtn.className = 'server-icon server-icon-add';
-      addBtn.textContent = '+';
-      addBtn.onclick = () => openServerCreateModal();
-      strip.appendChild(addBtn);
-    }
-  }
-}
-
-export function renderServerSelectionScreen() {
-  const empty = document.getElementById('empty-state');
-  const view  = document.getElementById('party-view');
-  if (empty) empty.style.display = 'none';
-  if (view) view.style.display = 'block';
-
-  const list = document.getElementById('party-list');
-  if (list) list.innerHTML = '';
-
-  let html = '<div class="server-select-screen">';
-
-  if (S.myServers.length === 0) {
-    html += `<div class="empty-icon" style="font-size:48px">🏰</div>
-      <div class="empty-title">No servers yet</div>
-      <div class="empty-sub">Join a server or ask the owner to create one</div>`;
-  } else {
-    html += `<a href="#" onclick="event.preventDefault(); loadServerList()" style="color:var(--accent);font-size:13px;margin-bottom:16px">← Back to servers</a>`;
-  }
-
-  html += `<div class="join-invite-section">
-    <input type="text" id="inline-invite-input" placeholder="XXXX-XXXX" maxlength="9" style="text-transform:uppercase;letter-spacing:2px"/>
-    <button class="btn-primary" onclick="submitInlineInvite()" style="width:auto;padding:0 20px;white-space:nowrap">Join</button>
-  </div>`;
-
-  if (S.discoverableServers.length > 0) {
-    html += `<div class="settings-section-title" style="margin-top:20px">Discoverable Servers</div>`;
-    html += '<div class="server-grid">';
-    for (const srv of S.discoverableServers) {
-      html += `<div class="server-card" id="scard-${esc(srv.id)}">
-        <div class="server-card-banner" style="${srv.bannerUrl ? `background-image:url('${esc(srv.bannerUrl)}')` : 'background:var(--panel2)'}"></div>
-        <div class="server-card-body">
-          <div style="font-weight:600">${esc(srv.name)}</div>
-          <div style="font-size:12px;color:var(--text-3)">${srv.memberCount} member${srv.memberCount !== 1 ? 's' : ''}</div>
-          <button class="btn-primary" style="margin-top:8px;font-size:12px;height:32px;line-height:32px" onclick="requestServerAccess('${esc(srv.id)}')">Request Access</button>
-        </div>
-      </div>`;
-    }
-    html += '</div>';
-  }
-
-  if (S.pendingServers.length > 0) {
-    html += `<div class="settings-section-title" style="margin-top:20px">Pending Approval</div>`;
-    html += '<div class="server-grid">';
-    for (const srv of S.pendingServers) {
-      html += `<div class="server-card pending">
-        <div class="server-card-banner" style="${srv.bannerUrl ? `background-image:url('${esc(srv.bannerUrl)}')` : 'background:var(--panel2)'}"></div>
-        <div class="server-card-body">
-          <div style="font-weight:600">${esc(srv.name)}</div>
-          <div style="font-size:12px;color:var(--text-3)">Pending approval</div>
-        </div>
-      </div>`;
-    }
-    html += '</div>';
-  }
-
-  html += '</div>';
-  view.innerHTML = html;
-}
-
-export function openServerCreateModal() {
-  _scBannerFile = null;
-  document.getElementById('server-create-modal').classList.remove('hidden');
-  document.getElementById('sc-name').value = '';
-  document.getElementById('sc-channels').value = '4';
-  document.getElementById('sc-discoverable').checked = true;
-  document.getElementById('sc-err').textContent = '';
-  const bannerArea = document.getElementById('sc-banner-area');
-  if (bannerArea) { bannerArea.style.backgroundImage = ''; bannerArea.textContent = 'Click to upload banner'; }
-}
-
-export function closeServerCreateModal() {
-  document.getElementById('server-create-modal').classList.add('hidden');
-}
-
-export function onSCBannerSelected() {
-  const input = document.getElementById('sc-banner-input');
-  if (!input.files.length) return;
-  _scBannerFile = input.files[0];
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const area = document.getElementById('sc-banner-area');
-    area.style.backgroundImage = `url('${e.target.result}')`;
-    area.textContent = '';
-  };
-  reader.readAsDataURL(_scBannerFile);
-}
-
-export async function submitCreateServer() {
-  const name = document.getElementById('sc-name').value.trim();
-  const channelCount = parseInt(document.getElementById('sc-channels').value) || 4;
-  const discoverable = document.getElementById('sc-discoverable').checked;
-  if (name.length < 2 || name.length > 40) return setErr('sc-err', 'Name must be 2-40 characters');
-
-  try {
-    const res = await fetch('/voice/api/servers/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ownerCode: S.ownerCode, name, channelCount, discoverable })
-    });
-    const data = await res.json();
-    if (!data.ok) return setErr('sc-err', data.error || 'Failed');
-
-    if (_scBannerFile && data.server) {
-      const fd = new FormData();
-      fd.append('banner', _scBannerFile);
-      fd.append('ownerCode', S.ownerCode);
-      fd.append('serverId', data.server.id);
-      await fetch('/voice/api/servers/upload-banner', { method: 'POST', body: fd });
-    }
-
-    closeServerCreateModal();
-    notify('Server created ✓', 'success');
-    // Set currentServerId so loadServerList() skips its auto-join fallback
-    // (loadServerList only auto-joins if currentServerId is null or not in myServers)
-    if (data.server) S.setCurrentServerId(data.server.id);
-    await loadServerList();
-    // Explicitly join the new server via socket
-    if (data.server) joinServer(data.server.id);
-  } catch (e) {
-    setErr('sc-err', 'Could not reach server');
-  }
-}
-
-export function openServerSettings() {
-  if (!S.currentServerData) return;
-  _ssBannerFile = null;
-  const srv = S.currentServerData;
-  document.getElementById('server-settings-modal').classList.remove('hidden');
-  document.getElementById('ss-name').value = srv.name;
-  document.getElementById('ss-channels').value = srv.channelCount || srv.channels.length;
-  document.getElementById('ss-discoverable').checked = srv.discoverable;
-  const bannerArea = document.getElementById('ss-banner-area');
-  if (bannerArea) {
-    if (srv.bannerUrl) {
-      bannerArea.style.backgroundImage = `url('${esc(srv.bannerUrl)}')`;
-      bannerArea.textContent = '';
-    } else {
-      bannerArea.style.backgroundImage = '';
-      bannerArea.textContent = 'Click to upload banner';
-    }
-  }
-}
-
-export function closeServerSettings() {
-  document.getElementById('server-settings-modal').classList.add('hidden');
-}
-
-export function onSSBannerSelected() {
-  const input = document.getElementById('ss-banner-input');
-  if (!input.files.length) return;
-  _ssBannerFile = input.files[0];
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const area = document.getElementById('ss-banner-area');
-    area.style.backgroundImage = `url('${e.target.result}')`;
-    area.textContent = '';
-  };
-  reader.readAsDataURL(_ssBannerFile);
-}
-
-export async function submitServerEdit() {
-  if (!S.currentServerData) return;
-  const name = document.getElementById('ss-name').value.trim();
-  const channelCount = parseInt(document.getElementById('ss-channels').value);
-  const discoverable = document.getElementById('ss-discoverable').checked;
-
-  try {
-    const res = await fetch('/voice/api/servers/edit', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ownerCode: S.ownerCode, serverId: S.currentServerId, name, channelCount, discoverable })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Failed', 'error');
-
-    if (_ssBannerFile) {
-      const fd = new FormData();
-      fd.append('banner', _ssBannerFile);
-      fd.append('ownerCode', S.ownerCode);
-      fd.append('serverId', S.currentServerId);
-      await fetch('/voice/api/servers/upload-banner', { method: 'POST', body: fd });
-    }
-
-    closeServerSettings();
-    notify('Server updated ✓', 'success');
-    await loadServerList();
-    joinServer(S.currentServerId);
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-export async function submitDeleteServer() {
-  if (!S.currentServerData) return;
-  if (!confirm(`Delete "${S.currentServerData.name}"? This cannot be undone.`)) return;
-  try {
-    const res = await fetch('/voice/api/servers/delete', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ownerCode: S.ownerCode, serverId: S.currentServerId })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Failed', 'error');
-    closeServerSettings();
-    notify('Server deleted', 'success');
-    leaveCurrentServer();
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-export function openInviteModal() {
-  document.getElementById('invite-modal').classList.remove('hidden');
-  document.getElementById('invite-result').style.display = 'none';
-}
-
-export function closeInviteModal() {
-  document.getElementById('invite-modal').classList.add('hidden');
-}
-
-export async function generateInviteCode() {
-  const hours = parseInt(document.getElementById('invite-expiry').value) || 24;
-  try {
-    const res = await fetch('/voice/api/servers/create-invite', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, serverId: S.currentServerId, expiryHours: hours })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Failed', 'error');
-    document.getElementById('invite-code-display').textContent = data.code;
-    const expDate = new Date(data.expiresAt);
-    document.getElementById('invite-expiry-label').textContent = `Expires: ${expDate.toLocaleString()}`;
-    document.getElementById('invite-result').style.display = 'block';
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-export function copyInviteCode() {
-  const code = document.getElementById('invite-code-display').textContent;
-  navigator.clipboard.writeText(code).then(() => notify('Copied ✓', 'success')).catch(() => notify('Could not copy', 'error'));
-}
-
-export async function requestServerAccess(serverId) {
-  try {
-    const res = await fetch('/voice/api/servers/request-access', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, serverId })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Failed', 'error');
-    const card = document.getElementById('scard-' + serverId);
-    if (card) {
-      card.classList.add('pending');
-      const btn = card.querySelector('button');
-      if (btn) { btn.textContent = 'Pending'; btn.disabled = true; }
-    }
-    notify('Access requested ✓', 'success');
-    await loadServerList();
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-export async function submitInlineInvite() {
-  const input = document.getElementById('inline-invite-input');
-  const code = (input.value || '').trim().toUpperCase();
-  if (!code) return notify('Enter an invite code', 'error');
-  try {
-    const res = await fetch('/voice/api/servers/join-by-invite', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, code })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Invalid code', 'error');
-    notify('Joined server ✓', 'success');
-    await loadServerList();
-    if (data.serverId) joinServer(data.serverId);
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-export async function approveServerRequest(targetUsername) {
-  try {
-    const res = await fetch('/voice/api/servers/approve-request', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, serverId: S.currentServerId, targetUsername })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Failed', 'error');
-    notify('Request approved ✓', 'success');
-    await loadServerList();
-    if (S.currentServerId) joinServer(S.currentServerId);
-  } catch (e) {
-    notify('Could not reach server', 'error');
-  }
-}
-
-export async function denyServerRequest(targetUsername) {
-  try {
-    const res = await fetch('/voice/api/servers/deny-request', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, serverId: S.currentServerId, targetUsername })
-    });
-    const data = await res.json();
-    if (!data.ok) return notify(data.error || 'Failed', 'error');
-    notify('Request denied', 'success');
-    await loadServerList();
-    if (S.currentServerId) joinServer(S.currentServerId);
   } catch (e) {
     notify('Could not reach server', 'error');
   }
