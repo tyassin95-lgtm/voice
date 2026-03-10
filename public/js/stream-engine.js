@@ -19,7 +19,11 @@ export async function startScreenShare() {
   }
   try {
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { width: { max: 1920 }, height: { max: 1080 } },
+      video: { 
+        width: { max: 1920 },
+        height: { max: 1080 },
+        frameRate: { max: 30 }
+      },
       audio: true
     });
     S.setScreenStream(stream);
@@ -58,9 +62,19 @@ export function handleWatchRequest({ watcherId }) {
 
   const pc = new RTCPeerConnection(RTC_CONFIG);
 
-  // Add screen share tracks to the connection
   S.screenStream.getTracks().forEach(track => {
-    pc.addTrack(track, S.screenStream);
+    const sender = pc.addTrack(track, S.screenStream);
+    
+    // If it's the video track, forcefully limit the bitrate
+    if (track.kind === 'video') {
+      const parameters = sender.getParameters();
+      if (!parameters.encodings) {
+        parameters.encodings = [{}];
+      }
+      // Cap at 1.5 Mbps per watcher
+      parameters.encodings[0].maxBitrate = 1500000; 
+      sender.setParameters(parameters).catch(e => console.error(e));
+    }
   });
 
   pc.onicecandidate = (e) => {
