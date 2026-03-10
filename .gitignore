@@ -8,3 +8,6 @@ public/uploads/avatars/*
 !public/uploads/avatars/.gitkeep
 public/uploads/banners/*
 !public/uploads/banners/.gitkeep
+desktop-app/node_modules/
+desktop-app/dist/
+desktop-app/build/
