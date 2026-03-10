@@ -5,6 +5,7 @@ import { socket } from './socket-client.js';
 import { notify } from './utils.js';
 import { renderMainPanel, updateScreenShareBtn } from './ui-controller.js';
 import { esc } from './utils.js';
+import { startScreenStream } from './startScreenStream.js';
 
 const RTC_CONFIG = {
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -18,47 +19,7 @@ export async function startScreenShare() {
     return;
   }
   try {
-    let stream;
-
-    // ── Electron screenshare shim ──
-    // When running inside Electron, use the desktop capturer API via the
-    // contextBridge instead of the browser's getDisplayMedia picker.
-    if (window.electronAPI) {
-      const sources = await window.electronAPI.getSources();
-      if (!sources || sources.length === 0) {
-        notify('No desktop sources found', 'warn');
-        return;
-      }
-
-      // Pick the first full-screen source as a sensible default.
-      // A richer source-picker UI can be layered on top in the future.
-      const screenSource = sources.find(s => s.id.startsWith('screen:')) || sources[0];
-
-      // NOTE: Electron requires the legacy mandatory constraint syntax for
-      // chromeMediaSource / chromeMediaSourceId — standard constraints do not
-      // work with Electron's desktopCapturer-backed getUserMedia.
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: screenSource.id,
-            maxWidth: 1920,
-            maxHeight: 1080,
-            maxFrameRate: 30,
-          },
-        },
-      });
-    } else {
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { 
-          width: { max: 1920 },
-          height: { max: 1080 },
-          frameRate: { max: 30 }
-        },
-        audio: true
-      });
-    }
+    const stream = await startScreenStream();
 
     S.setScreenStream(stream);
     S.setIsStreaming(true);

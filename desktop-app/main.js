@@ -4,6 +4,7 @@
 
 const { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, session, desktopCapturer } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { GlobalKeyboardListener } = require('node-global-key-listener');
 const path = require('path');
 
 // ── Keyboard code → Electron accelerator mapping ──
@@ -38,6 +39,41 @@ function codeToAccelerator(code) {
   return CODE_TO_ACCELERATOR[code] || null;
 }
 
+// ── node-global-key-listener name → KeyboardEvent.code mapping ──
+// Used for the global PTT listener which provides true keydown/keyup events.
+const NGL_NAME_TO_CODE = {
+  SPACE: 'Space', RETURN: 'Enter', ESCAPE: 'Escape', TAB: 'Tab',
+  BACK: 'Backspace', DELETE: 'Delete', INSERT: 'Insert',
+  HOME: 'Home', END: 'End', PRIOR: 'PageUp', NEXT: 'PageDown',
+  UP: 'ArrowUp', DOWN: 'ArrowDown', LEFT: 'ArrowLeft', RIGHT: 'ArrowRight',
+  OEM_1: 'Semicolon', OEM_2: 'Slash', OEM_3: 'Backquote',
+  OEM_4: 'BracketLeft', OEM_5: 'Backslash', OEM_6: 'BracketRight',
+  OEM_7: 'Quote', OEM_COMMA: 'Comma', OEM_MINUS: 'Minus',
+  OEM_PERIOD: 'Period', OEM_PLUS: 'Equal',
+  ADD: 'NumpadAdd', SUBTRACT: 'NumpadSubtract',
+  MULTIPLY: 'NumpadMultiply', DIVIDE: 'NumpadDivide',
+  DECIMAL: 'NumpadDecimal',
+  NUMPAD0: 'Numpad0', NUMPAD1: 'Numpad1', NUMPAD2: 'Numpad2',
+  NUMPAD3: 'Numpad3', NUMPAD4: 'Numpad4', NUMPAD5: 'Numpad5',
+  NUMPAD6: 'Numpad6', NUMPAD7: 'Numpad7', NUMPAD8: 'Numpad8',
+  NUMPAD9: 'Numpad9',
+  F1: 'F1', F2: 'F2', F3: 'F3', F4: 'F4', F5: 'F5', F6: 'F6',
+  F7: 'F7', F8: 'F8', F9: 'F9', F10: 'F10', F11: 'F11', F12: 'F12',
+};
+
+// Letters A-Z → KeyA-KeyZ, Digits 0-9 → Digit0-Digit9
+for (let i = 65; i <= 90; i++) {
+  const ch = String.fromCharCode(i);
+  NGL_NAME_TO_CODE[ch] = `Key${ch}`;
+}
+for (let i = 0; i <= 9; i++) {
+  NGL_NAME_TO_CODE[String(i)] = `Digit${i}`;
+}
+
+function nglNameToCode(name) {
+  return NGL_NAME_TO_CODE[name] || null;
+}
+
 // ── Application state ──
 let mainWindow = null;
 let tray = null;
@@ -49,9 +85,26 @@ const shortcuts = {
   pause:   { enabled: false, key: 'KeyB' },
 };
 
-// PTT repeat-timer for key release detection
-let pttRepeatTimer = null;
-const PTT_REPEAT_TIMEOUT_MS = 200;
+// ── Global keyboard listener for PTT ──
+// Uses node-global-key-listener for true keydown/keyup detection that works
+// even when the Electron window is unfocused, minimized, or another app has focus.
+const keyboard = new GlobalKeyboardListener();
+let pttDown = false; // tracks current PTT key state
+
+keyboard.addListener((e) => {
+  if (!mainWindow || !shortcuts.ptt.enabled) return;
+
+  const code = nglNameToCode(e.name);
+  if (code !== shortcuts.ptt.key) return;
+
+  if (e.state === 'DOWN' && !pttDown) {
+    pttDown = true;
+    mainWindow.webContents.send('shortcut', 'ptt-down');
+  } else if (e.state === 'UP' && pttDown) {
+    pttDown = false;
+    mainWindow.webContents.send('shortcut', 'ptt-up');
+  }
+});
 
 // ── Window creation ──
 function createWindow() {
@@ -93,34 +146,13 @@ function createWindow() {
 }
 
 // ── Global shortcut management ──
+// PTT uses the global keyboard listener (above) for reliable keydown/keyup.
+// Mute and broadcast-pause only need single-press detection, so globalShortcut is fine.
 function registerShortcuts() {
   globalShortcut.unregisterAll();
 
-  // Push-To-Talk shortcut
-  if (shortcuts.ptt.enabled) {
-    const accel = codeToAccelerator(shortcuts.ptt.key);
-    if (accel) {
-      globalShortcut.register(accel, () => {
-        if (!mainWindow) return;
-
-        // On first press, emit ptt-down
-        // The global shortcut fires repeatedly while held.
-        // Use a repeat-timer: each repeat resets the timer.
-        // When the timer expires, treat it as key release (ptt-up).
-        if (!pttRepeatTimer) {
-          mainWindow.webContents.send('shortcut', 'ptt-down');
-        }
-
-        clearTimeout(pttRepeatTimer);
-        pttRepeatTimer = setTimeout(() => {
-          pttRepeatTimer = null;
-          if (mainWindow) {
-            mainWindow.webContents.send('shortcut', 'ptt-up');
-          }
-        }, PTT_REPEAT_TIMEOUT_MS);
-      });
-    }
-  }
+  // Reset PTT state when shortcuts are re-registered (key may have changed)
+  pttDown = false;
 
   // Mute toggle shortcut
   if (shortcuts.mute.enabled) {
@@ -275,7 +307,7 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  clearTimeout(pttRepeatTimer);
+  keyboard.kill();
 });
 
 app.on('before-quit', () => {
