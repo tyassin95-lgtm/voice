@@ -81,7 +81,7 @@ function registerSocketHandlers(io) {
       const uname = user.username.toLowerCase();
       const accounts = loadAccounts();
       const acc = accounts[uname];
-      const isOwner = acc?.role === 'owner';
+      const isOwner = acc?.role === 'owner' || user.role === 'owner';
       if (!isOwner && !srv.members.includes(uname) && !srv.admins.includes(uname)) return;
 
       // Leave current channel if in one
@@ -141,7 +141,7 @@ function registerSocketHandlers(io) {
       const uname = user.username.toLowerCase();
       const accounts = loadAccounts();
       const acc = accounts[uname];
-      const isOwner = acc?.role === 'owner';
+      const isOwner = acc?.role === 'owner' || user.role === 'owner';
       if (!isOwner && !srv.members.includes(uname) && !srv.admins.includes(uname)) return;
 
       // Verify channel exists

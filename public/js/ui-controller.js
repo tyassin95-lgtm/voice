@@ -1177,6 +1177,7 @@ export function updateRoleBadge() {
 export function logout() {
   if (!confirm('Sign out of OathlyVoice?')) return;
   if (S.currentParty) socket.emit('leave-party');
+  if (S.currentServerId) socket.emit('leave-server');
   if (S.isBroadcaster) { S.setIsBroadcaster(false); socket.emit('set-broadcaster', { isBroadcaster: false }); }
   if (S.micVAD) { try { S.micVAD.destroy(); } catch(e){} S.setMicVAD(null); }
   if (S.processorNode?.port) { try { S.processorNode.port.postMessage('stop'); } catch(e){} }
@@ -1481,7 +1482,8 @@ let _ssBannerFile = null; // temp store for server settings banner
 
 export async function loadServerList() {
   try {
-    const res = await fetch(`/voice/api/servers/list?username=${encodeURIComponent(S.myUsername)}&password=${encodeURIComponent(S.myPassword)}`);
+    const ownerParam = S.ownerCode ? `&ownerCode=${encodeURIComponent(S.ownerCode)}` : '';
+    const res = await fetch(`/voice/api/servers/list?username=${encodeURIComponent(S.myUsername)}&password=${encodeURIComponent(S.myPassword)}${ownerParam}`);
     if (!res.ok) return;
     const data = await res.json();
     if (!data.ok) return;

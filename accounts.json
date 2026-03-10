@@ -37,8 +37,8 @@
       "inputVolume": 100
     }
   },
-  "jimmydark\u3066": {
-    "username": "JimmyDark\u3066",
+  "jimmydarkて": {
+    "username": "JimmyDarkて",
     "password": "testing69",
     "settings": {
       "micSensitivity": 1,
@@ -287,6 +287,22 @@
       "echoCancellation": true,
       "pushToTalk": false,
       "pttKey": "Space",
+      "inputVolume": 100
+    }
+  },
+  "testuser": {
+    "username": "testuser",
+    "password": "test1234",
+    "role": "user",
+    "settings": {
+      "micSensitivity": 50,
+      "pushToTalk": false,
+      "pttKey": "Space",
+      "pttTouch": false,
+      "muteKeybind": false,
+      "muteKey": "KeyM",
+      "bcPauseKeybind": false,
+      "bcPauseKey": "KeyB",
       "inputVolume": 100
     }
   }
