@@ -632,7 +632,38 @@
   font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
 }
 .stream-viewer-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+.stream-viewer-header-actions {
+  display: flex; align-items: center; gap: 4px;
+}
+.stream-viewer-btn {
+  background: none; border: none; color: var(--text-2);
+  font-size: 18px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+}
+.stream-viewer-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
 #stream-viewer-video {
-  width: 100%; max-height: calc(90vh - 44px);
+  width: 100%; max-height: calc(90vh - 80px);
   object-fit: contain; background: #000;
+}
+.stream-viewer-footer {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--panel);
+  color: var(--text-2); font-size: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.stream-viewer-count {
+  font-weight: 600; color: var(--text); margin-right: 4px;
+}
+.stream-viewer-name {
+  background: rgba(255,255,255,0.06); padding: 2px 8px;
+  border-radius: 10px; font-size: 11px; color: var(--text);
+}
+
+/* Fullscreen overrides */
+.stream-viewer-container:fullscreen {
+  max-width: 100%; width: 100%; max-height: 100%;
+  border-radius: 0;
+}
+.stream-viewer-container:fullscreen #stream-viewer-video {
+  max-height: calc(100vh - 80px);
 }

@@ -18,7 +18,10 @@ export async function startScreenShare() {
     return;
   }
   try {
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { width: { max: 1920 }, height: { max: 1080 } },
+      audio: true
+    });
     S.setScreenStream(stream);
     S.setIsStreaming(true);
     socket.emit('stream-start');
@@ -146,15 +149,50 @@ export function handleStreamIce({ fromId, candidate }) {
 }
 
 export function stopWatchingStream() {
+  const prevStreamerId = S.watchingStreamerId;
   if (S.watchPeerConnection) {
     try { S.watchPeerConnection.close(); } catch (e) { /* ignore */ }
     S.setWatchPeerConnection(null);
   }
   S.setWatchingStreamerId(null);
+  S.setStreamViewers([]);
+  if (prevStreamerId) socket.emit('stream-watch-stop', { streamerId: prevStreamerId });
+  // Exit fullscreen if active
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+  }
   removeStreamViewer();
 }
 
 // ───────────────────── Viewer UI ─────────────────────
+
+function toggleFullscreen() {
+  const container = document.querySelector('.stream-viewer-container');
+  if (!container) return;
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+  } else {
+    container.requestFullscreen().catch(() => {});
+  }
+}
+
+function renderViewerList() {
+  const el = document.getElementById('stream-viewer-list');
+  if (!el) return;
+  const viewers = S.streamViewers;
+  if (viewers.length === 0) {
+    el.innerHTML = '<span class="stream-viewer-count">No viewers</span>';
+    return;
+  }
+  const label = viewers.length === 1 ? '1 viewer' : `${viewers.length} viewers`;
+  const names = viewers.map(v => `<span class="stream-viewer-name">${esc(v.username)}</span>`).join('');
+  el.innerHTML = `<span class="stream-viewer-count">👁️ ${label}:</span>${names}`;
+}
+
+export function updateStreamViewers(streamerId, viewers) {
+  S.setStreamViewers(viewers);
+  renderViewerList();
+}
 
 function showStreamViewer(streamerId, mediaStream) {
   removeStreamViewer(); // Clean up any existing viewer
@@ -174,9 +212,13 @@ function showStreamViewer(streamerId, mediaStream) {
     <div class="stream-viewer-container">
       <div class="stream-viewer-header">
         <span>🖥️ ${esc(streamerName)}'s screen</span>
-        <button class="stream-viewer-close" id="stream-viewer-close-btn">✕</button>
+        <div class="stream-viewer-header-actions">
+          <button class="stream-viewer-btn" id="stream-viewer-fullscreen-btn" title="Toggle fullscreen">⛶</button>
+          <button class="stream-viewer-close" id="stream-viewer-close-btn">✕</button>
+        </div>
       </div>
       <video id="stream-viewer-video" autoplay playsinline></video>
+      <div class="stream-viewer-footer" id="stream-viewer-list"></div>
     </div>
   `;
 
@@ -186,9 +228,27 @@ function showStreamViewer(streamerId, mediaStream) {
   video.srcObject = mediaStream;
 
   document.getElementById('stream-viewer-close-btn').onclick = () => stopWatchingStream();
+  document.getElementById('stream-viewer-fullscreen-btn').onclick = () => toggleFullscreen();
+
+  // Update fullscreen button icon on fullscreen change
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+
+  // Render current viewer list
+  renderViewerList();
+}
+
+function onFullscreenChange() {
+  const btn = document.getElementById('stream-viewer-fullscreen-btn');
+  if (!btn) {
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
+    return;
+  }
+  btn.textContent = document.fullscreenElement ? '⊡' : '⛶';
+  btn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Toggle fullscreen';
 }
 
 function removeStreamViewer() {
+  document.removeEventListener('fullscreenchange', onFullscreenChange);
   const overlay = document.getElementById('stream-viewer-overlay');
   if (overlay) overlay.remove();
 }

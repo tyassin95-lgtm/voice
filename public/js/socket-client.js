@@ -9,7 +9,7 @@ import {
 } from './ui-controller.js';
 import {
   handleWatchRequest, handleStreamOffer, handleStreamAnswer,
-  handleStreamIce, onStreamEnded
+  handleStreamIce, onStreamEnded, updateStreamViewers
 } from './stream-engine.js';
 import { playSound } from './utils.js';
 
@@ -154,6 +154,10 @@ socket.on('stream-answer', (data) => {
 
 socket.on('stream-ice', (data) => {
   handleStreamIce(data);
+});
+
+socket.on('stream-viewers-update', ({ streamerId, viewers }) => {
+  updateStreamViewers(streamerId, viewers);
 });
 
 // ── Latency measurement ──

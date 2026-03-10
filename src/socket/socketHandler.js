@@ -4,6 +4,44 @@ const { loadAccounts, saveAccounts } = require('../services/accountService');
 
 function registerSocketHandlers(io) {
 
+  // streamerId -> Set of watcherSocketIds
+  const streamWatchers = {};
+
+  // Helper: emit the current viewer list for a streamer to all watchers + the streamer
+  function emitViewerList(streamerId) {
+    const watcherIds = streamWatchers[streamerId] ? [...streamWatchers[streamerId]] : [];
+    const viewers = watcherIds.map(wid => {
+      const u = users[wid];
+      return { socketId: wid, username: u?.username || 'Unknown' };
+    });
+    // Send to the streamer
+    io.to(streamerId).emit('stream-viewers-update', { streamerId, viewers });
+    // Send to each watcher
+    for (const wid of watcherIds) {
+      io.to(wid).emit('stream-viewers-update', { streamerId, viewers });
+    }
+  }
+
+  function addStreamWatcher(streamerId, watcherId) {
+    if (!streamWatchers[streamerId]) streamWatchers[streamerId] = new Set();
+    streamWatchers[streamerId].add(watcherId);
+    emitViewerList(streamerId);
+  }
+
+  function removeStreamWatcher(streamerId, watcherId) {
+    if (!streamWatchers[streamerId]) return;
+    streamWatchers[streamerId].delete(watcherId);
+    emitViewerList(streamerId);
+    if (streamWatchers[streamerId].size === 0) delete streamWatchers[streamerId];
+  }
+
+  function removeWatcherFromAll(watcherId) {
+    for (const sid of Object.keys(streamWatchers)) {
+      if (streamWatchers[sid].has(watcherId)) {
+        removeStreamWatcher(sid, watcherId);
+      }
+    }
+  }
   // Helper: build a member list of ALL registered users with online status
   function getMemberList() {
     const accounts = loadAccounts();
@@ -78,8 +116,10 @@ function registerSocketHandlers(io) {
       if (!user || user.party === null) return;
       if (user.isStreaming) {
         user.isStreaming = false;
+        if (streamWatchers[socket.id]) delete streamWatchers[socket.id];
         socket.to(`party-${user.party}`).emit('stream-ended', { streamerId: socket.id });
       }
+      removeWatcherFromAll(socket.id);
       parties[user.party].delete(socket.id);
       socket.leave(`party-${user.party}`);
       socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
@@ -340,6 +380,10 @@ function registerSocketHandlers(io) {
       const user = users[socket.id];
       if (!user) return;
       user.isStreaming = false;
+      // Clean up all watchers for this stream
+      if (streamWatchers[socket.id]) {
+        delete streamWatchers[socket.id];
+      }
       io.emit('party-update', getPartyList());
       if (user.party !== null) socket.to(`party-${user.party}`).emit('stream-ended', { streamerId: socket.id });
     });
@@ -347,7 +391,16 @@ function registerSocketHandlers(io) {
     socket.on('stream-watch-request', ({ streamerId }) => {
       const user = users[socket.id];
       if (!user) return;
+      // Remove from any previous stream they were watching
+      removeWatcherFromAll(socket.id);
+      addStreamWatcher(streamerId, socket.id);
       socket.to(streamerId).emit('stream-watch-request', { watcherId: socket.id, watcherName: user.username });
+    });
+
+    socket.on('stream-watch-stop', ({ streamerId }) => {
+      const user = users[socket.id];
+      if (!user) return;
+      removeStreamWatcher(streamerId, socket.id);
     });
 
     socket.on('stream-offer', ({ watcherId, offer }) => {
@@ -373,8 +426,10 @@ function registerSocketHandlers(io) {
       if (user) {
         if (user.isStreaming && user.party !== null) {
           user.isStreaming = false;
+          if (streamWatchers[socket.id]) delete streamWatchers[socket.id];
           socket.to(`party-${user.party}`).emit('stream-ended', { streamerId: socket.id });
         }
+        removeWatcherFromAll(socket.id);
         if (user.party !== null) {
           parties[user.party].delete(socket.id);
           socket.to(`party-${user.party}`).emit('peer-left', { socketId: socket.id });
