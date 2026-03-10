@@ -5,3 +5,5 @@ server_icons/
 profile_images/
 public/uploads/avatars/*
 !public/uploads/avatars/.gitkeep
+public/uploads/banners/*
+!public/uploads/banners/.gitkeep

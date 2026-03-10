@@ -20,7 +20,14 @@ import {
   onInputDeviceChange, onOutputDeviceChange, populateDeviceList,
   openProfileModal, closeProfileModal,
   openProfileEditor, closeProfileEditor, onPEBannerColorChange, onPEStatusInput, onPEAvatarSelected, savePEProfile,
-  filterMemberSidebar
+  filterMemberSidebar,
+  // Server management
+  loadServerList, joinServer, leaveCurrentServer,
+  openServerCreateModal, closeServerCreateModal, onSCBannerSelected, submitCreateServer,
+  openServerSettings, closeServerSettings, onSSBannerSelected, submitServerEdit, submitDeleteServer,
+  openInviteModal, closeInviteModal, generateInviteCode, copyInviteCode,
+  requestServerAccess, submitInlineInvite,
+  approveServerRequest, denyServerRequest
 } from './ui-controller.js';
 import { playSound } from './utils.js';
 
@@ -78,6 +85,28 @@ window.onPEStatusInput        = onPEStatusInput;
 window.onPEAvatarSelected     = onPEAvatarSelected;
 window.savePEProfile          = savePEProfile;
 window.filterMemberSidebar    = filterMemberSidebar;
+
+// Server management
+window.loadServerList          = loadServerList;
+window.joinServer              = joinServer;
+window.leaveCurrentServer      = leaveCurrentServer;
+window.openServerCreateModal   = openServerCreateModal;
+window.closeServerCreateModal  = closeServerCreateModal;
+window.onSCBannerSelected     = onSCBannerSelected;
+window.submitCreateServer      = submitCreateServer;
+window.openServerSettings      = openServerSettings;
+window.closeServerSettings     = closeServerSettings;
+window.onSSBannerSelected     = onSSBannerSelected;
+window.submitServerEdit        = submitServerEdit;
+window.submitDeleteServer      = submitDeleteServer;
+window.openInviteModal         = openInviteModal;
+window.closeInviteModal        = closeInviteModal;
+window.generateInviteCode      = generateInviteCode;
+window.copyInviteCode          = copyInviteCode;
+window.requestServerAccess     = requestServerAccess;
+window.submitInlineInvite      = submitInlineInvite;
+window.approveServerRequest    = approveServerRequest;
+window.denyServerRequest       = denyServerRequest;
 
 // ── Keyboard event handlers ──
 document.addEventListener('keydown', e => {

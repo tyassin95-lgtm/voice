@@ -15,6 +15,13 @@ export let localStream   = null;
 export let partyData     = {};
 export let amISpeaking   = false;
 
+// ── Server state ──
+export let currentServerId     = null;
+export let myServers           = [];
+export let discoverableServers = [];
+export let pendingServers      = [];
+export let currentServerData   = null;
+
 // ── Profile state ──
 export let myAvatarUrl    = '';
 export let myBannerColor  = '#5865f2';
@@ -106,6 +113,11 @@ export function setIsMuted(v)       { isMuted = v; }
 export function setIsDeafened(v)    { isDeafened = v; }
 export function setIsAdmin(v)       { isAdmin = v; }
 export function setMyRole(v)        { myRole = v; }
+export function setCurrentServerId(v)     { currentServerId = v; }
+export function setMyServers(v)           { myServers = v; }
+export function setDiscoverableServers(v) { discoverableServers = v; }
+export function setPendingServers(v)      { pendingServers = v; }
+export function setCurrentServerData(v)   { currentServerData = v; }
 export function setOwnerCode(v)     { ownerCode = v; }
 export function setServerMutedMe(v) { serverMutedMe = v; }
 export function setLocalStream(v)   { localStream = v; }
