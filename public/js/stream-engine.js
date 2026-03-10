@@ -243,7 +243,7 @@ function onFullscreenChange() {
     document.removeEventListener('fullscreenchange', onFullscreenChange);
     return;
   }
-  btn.textContent = document.fullscreenElement ? '⛶' : '⛶';
+  btn.textContent = document.fullscreenElement ? '⊡' : '⛶';
   btn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Toggle fullscreen';
 }
 
