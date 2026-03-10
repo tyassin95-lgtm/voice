@@ -61,10 +61,15 @@ function registerSocketHandlers(io) {
       const autoAdmin = role === 'admin' || role === 'owner';
       users[socket.id] = { username, party: null, serverId: null, isBroadcaster: false, broadcastTargets: 'all', broadcastPaused: false, isAdmin: autoAdmin, serverMuted: false, selfMuted: false, selfDeafened: false, role, avatarUrl: acc?.avatarUrl || '', bannerColor: acc?.bannerColor || '#5865f2', bio: acc?.bio || '' };
       console.log(`${username} joined (role: ${role}${autoAdmin ? ', auto-admin' : ''})`);
-      // Broadcast updated member list to all servers the user might be visible in
-      // (At join time, user has no serverId yet, so broadcast to all active servers)
-      const activeServerIds = new Set(Object.values(users).filter(u => u.serverId).map(u => u.serverId));
-      for (const sid of activeServerIds) broadcastMemberList(sid);
+      // User's online status changed — broadcast to servers where this user is a member
+      const unameLower = username?.toLowerCase();
+      if (unameLower) {
+        const servers = loadServers();
+        for (const [srvId, srv] of Object.entries(servers)) {
+          const members = new Set([...(srv.members || []), ...(srv.admins || [])]);
+          if (members.has(unameLower)) broadcastMemberList(srvId);
+        }
+      }
       // Notify the client of their role-based admin status
       if (autoAdmin) socket.emit('role-admin-granted', { role });
     });
@@ -485,10 +490,16 @@ function registerSocketHandlers(io) {
           if (srv) broadcastPartyList(user.serverId, srv.channels);
         }
         if (user.isBroadcaster) io.emit('broadcaster-left', { socketId: socket.id });
-        const disconnectedServerId = user.serverId;
+        const unameLower = user.username?.toLowerCase();
         delete users[socket.id];
-        // Broadcast updated member list scoped to the server the user was in
-        if (disconnectedServerId) broadcastMemberList(disconnectedServerId);
+        // User went offline — broadcast to all servers where they are a member
+        if (unameLower) {
+          const servers = loadServers();
+          for (const [srvId, srv] of Object.entries(servers)) {
+            const members = new Set([...(srv.members || []), ...(srv.admins || [])]);
+            if (members.has(unameLower)) broadcastMemberList(srvId);
+          }
+        }
       }
       console.log('Disconnected:', socket.id);
     });

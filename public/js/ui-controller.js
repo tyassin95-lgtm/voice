@@ -1721,12 +1721,12 @@ export async function submitCreateServer() {
 
     closeServerCreateModal();
     notify('Server created ✓', 'success');
-    if (data.server) S.setCurrentServerId(data.server.id); // set BEFORE loadServerList to prevent double-join
+    // Set currentServerId so loadServerList() skips its auto-join fallback
+    // (loadServerList only auto-joins if currentServerId is null or not in myServers)
+    if (data.server) S.setCurrentServerId(data.server.id);
     await loadServerList();
-    // joinServer only if loadServerList didn't already join the new server
-    if (data.server && (!S.currentServerData || S.currentServerData.id !== data.server.id)) {
-      joinServer(data.server.id);
-    }
+    // Explicitly join the new server via socket
+    if (data.server) joinServer(data.server.id);
   } catch (e) {
     setErr('sc-err', 'Could not reach server');
   }
