@@ -70,7 +70,7 @@
       <div class="settings-sidebar">
         <button class="settings-tab active" data-settings-tab="voice-video" onclick="switchSettingsTab('voice-video')">Voice &amp; Video</button>
         <button class="settings-tab" data-settings-tab="app-settings" onclick="switchSettingsTab('app-settings')">App Settings</button>
-        <button class="settings-tab" data-settings-tab="user-profile" onclick="switchSettingsTab('user-profile')">User Profile</button>
+        <button class="settings-tab" id="settings-tab-owner" data-settings-tab="owner" onclick="switchSettingsTab('owner')">Owner</button>
       </div>
       <div class="settings-content">
         <!-- ═══ VOICE & VIDEO TAB ═══ -->
@@ -155,42 +155,18 @@
           </div>
         </div>
 
-        <!-- ═══ USER PROFILE TAB ═══ -->
-        <div class="settings-section settings-tab-content" id="tab-user-profile" style="display:none">
-          <div class="settings-section-title">Profile</div>
-          <div id="profile-settings-section">
-            <div class="field">
-              <label>Avatar</label>
-              <div style="display:flex;align-items:center;gap:12px">
-                <div class="profile-settings-avatar" id="settings-avatar-preview"></div>
-                <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarFileSelected()">
-                <button class="ptt-key-btn" onclick="document.getElementById('avatar-file-input').click()">Upload Avatar</button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Custom Status</label>
-              <input type="text" id="profile-status-input" placeholder="What are you up to?" maxlength="60"/>
-            </div>
-            <div class="field">
-              <label>Bio</label>
-              <textarea id="profile-bio-input" placeholder="Tell us about yourself…" maxlength="190" rows="3" style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea>
-            </div>
-            <div class="field">
-              <label>Banner Color</label>
-              <div style="display:flex;align-items:center;gap:10px">
-                <input type="color" id="profile-banner-color" value="#5865f2" style="width:48px;height:32px;border:none;background:none;cursor:pointer">
-                <span id="profile-banner-color-label" style="font-size:13px;color:var(--text-3)">#5865f2</span>
-              </div>
-            </div>
-            <button class="btn-primary" onclick="saveProfile()">Save Profile</button>
-          </div>
-          <div id="profile-guest-notice" style="display:none;font-size:13px;color:var(--text-3);text-align:center;padding:20px 0">Sign in to customize your profile</div>
+        <!-- ═══ OWNER TAB ═══ -->
+        <div class="settings-section settings-tab-content" id="tab-owner" style="display:none">
+          <div class="settings-section-title">Owner Access</div>
+          <p style="font-size:13px;color:var(--text-3);margin-bottom:16px;line-height:1.6">
+            Enter the owner code to open the Admin Management panel where you can grant or revoke admin privileges for guild members.
+          </p>
+          <button class="btn-primary" onclick="onAdminClick()" style="max-width:260px">⚡ Unlock Owner Panel</button>
         </div>
       </div>
     </div>
 
     <button class="btn-ghost" onclick="closeSettings()">Close</button>
-    <button class="btn-ghost" onclick="logout()" style="margin-top:6px;border-color:var(--red);color:var(--red);opacity:0.7" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">Sign Out</button>
   </div>
 </div>
 
@@ -264,11 +240,11 @@
     <div id="party-list"></div>
   </aside>
   <div class="sidebar-user-panel">
-    <div class="sidebar-user-avatar" id="sidebar-avatar">
+    <div class="sidebar-user-avatar" id="sidebar-avatar" onclick="openProfileEditor()" title="Edit profile">
       <span class="status-dot connected" id="status-dot"></span>
     </div>
     <div class="sidebar-user-info">
-      <span class="sidebar-user-name" id="sidebar-username"></span>
+      <span class="sidebar-user-name" id="sidebar-username" onclick="openProfileEditor()" style="cursor:pointer" title="Edit profile"></span>
       <span class="sidebar-user-status" id="status-text">Connected</span>
     </div>
     <button class="sidebar-settings-btn" id="sidebar-settings-btn" onclick="openSettings()"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
@@ -302,7 +278,10 @@
   <!-- ═══ RIGHT MEMBER SIDEBAR ═══ -->
   <div class="member-sidebar-overlay" id="member-sidebar-overlay" onclick="closeMemberSidebar()"></div>
   <aside class="member-sidebar" id="member-sidebar">
-    <div class="member-sidebar-header">Members</div>
+    <div class="member-sidebar-header">
+      <div class="msb-header-label">Members</div>
+      <input type="text" class="msb-search" id="msb-search" placeholder="Search…" oninput="filterMemberSidebar(this.value)" autocomplete="off" spellcheck="false"/>
+    </div>
     <div class="member-sidebar-list" id="member-sidebar-list"></div>
   </aside>
 
@@ -372,6 +351,80 @@
   <button class="popover-btn danger" id="pop-kick-btn" onclick="adminKick()" style="display:none">
     ✕ Disconnect user
   </button>
+</div>
+
+<!-- ═══ PROFILE EDITOR MODAL ═══ -->
+<div class="modal-overlay hidden" id="profile-editor-modal" onclick="if(event.target===this)closeProfileEditor()">
+  <div class="profile-editor-card">
+
+    <!-- Live preview -->
+    <div class="pe-preview">
+      <div class="pe-banner" id="pe-banner-preview"></div>
+      <div class="pe-avatar-wrap">
+        <div class="pe-avatar" id="pe-avatar-preview"></div>
+      </div>
+      <div class="pe-preview-name" id="pe-preview-name"></div>
+      <div class="pe-preview-status" id="pe-preview-status"></div>
+    </div>
+
+    <!-- Editor fields -->
+    <div class="pe-fields">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:600;color:var(--text)">Edit Profile</div>
+        <button onclick="closeProfileEditor()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+
+      <!-- Avatar upload -->
+      <div class="pe-field-group">
+        <div class="pe-field-label">Avatar</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="pe-avatar-thumb" id="pe-avatar-thumb"></div>
+          <input type="file" id="pe-avatar-input" accept="image/*" style="display:none" onchange="onPEAvatarSelected()">
+          <button class="ptt-key-btn" onclick="document.getElementById('pe-avatar-input').click()">Upload Image</button>
+        </div>
+      </div>
+
+      <!-- Banner color -->
+      <div class="pe-field-group">
+        <div class="pe-field-label">Banner Color</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="color" id="pe-banner-color" value="#5865f2"
+            style="width:40px;height:32px;border:none;background:none;cursor:pointer;border-radius:4px"
+            oninput="onPEBannerColorChange(this.value)">
+          <span id="pe-banner-color-label" style="font-size:13px;color:var(--text-3)">#5865f2</span>
+        </div>
+      </div>
+
+      <!-- Custom status -->
+      <div class="pe-field-group">
+        <div class="pe-field-label">Status</div>
+        <input type="text" id="pe-status-input" placeholder="What are you up to?" maxlength="60"
+          oninput="onPEStatusInput(this.value)"
+          style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;height:40px"/>
+      </div>
+
+      <!-- Bio -->
+      <div class="pe-field-group">
+        <div class="pe-field-label">Bio</div>
+        <textarea id="pe-bio-input" placeholder="Tell the guild about yourself…" maxlength="190" rows="3"
+          style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea>
+      </div>
+
+      <div id="pe-guest-notice" style="display:none;font-size:13px;color:var(--text-3);text-align:center;padding:12px 0">
+        Sign in to customize your profile
+      </div>
+
+      <div id="pe-save-row">
+        <button class="btn-primary" onclick="savePEProfile()">Save Changes</button>
+      </div>
+
+      <!-- Sign out — moved here from settings -->
+      <button class="btn-ghost" onclick="logout()"
+        style="margin-top:8px;color:var(--red);opacity:0.7"
+        onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">Sign Out</button>
+
+    </div>
+  </div>
 </div>
 
 <div id="notifications"></div>

@@ -18,7 +18,9 @@ import {
   adminServerMute, adminKick,
   toggleSidebar, closeSidebar, toggleMemberSidebar, closeMemberSidebar, leaveParty, logout,
   onInputDeviceChange, onOutputDeviceChange, populateDeviceList,
-  openProfileModal, closeProfileModal, saveProfile, onAvatarFileSelected
+  openProfileModal, closeProfileModal,
+  openProfileEditor, closeProfileEditor, onPEBannerColorChange, onPEStatusInput, onPEAvatarSelected, savePEProfile,
+  filterMemberSidebar
 } from './ui-controller.js';
 import { playSound } from './utils.js';
 
@@ -70,8 +72,13 @@ window.onInputDeviceChange  = onInputDeviceChange;
 window.onOutputDeviceChange = onOutputDeviceChange;
 window.openProfileModal     = openProfileModal;
 window.closeProfileModal    = closeProfileModal;
-window.saveProfile          = saveProfile;
-window.onAvatarFileSelected = onAvatarFileSelected;
+window.openProfileEditor      = openProfileEditor;
+window.closeProfileEditor     = closeProfileEditor;
+window.onPEBannerColorChange  = onPEBannerColorChange;
+window.onPEStatusInput        = onPEStatusInput;
+window.onPEAvatarSelected     = onPEAvatarSelected;
+window.savePEProfile          = savePEProfile;
+window.filterMemberSidebar    = filterMemberSidebar;
 
 // ── Keyboard event handlers ──
 document.addEventListener('keydown', e => {
