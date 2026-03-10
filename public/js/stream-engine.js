@@ -132,12 +132,16 @@ export function handleStreamIce({ fromId, candidate }) {
   // If we are the streamer and fromId is a watcher
   const streamerPc = S.streamPeerConnections[fromId];
   if (streamerPc) {
-    streamerPc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+    streamerPc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {
+      console.warn('[Stream] ICE candidate error (streamer):', e);
+    });
     return;
   }
   // If we are the watcher and fromId is the streamer
   if (S.watchPeerConnection && S.watchingStreamerId === fromId) {
-    S.watchPeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+    S.watchPeerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {
+      console.warn('[Stream] ICE candidate error (watcher):', e);
+    });
   }
 }
 

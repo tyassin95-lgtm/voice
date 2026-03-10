@@ -1003,11 +1003,12 @@ export function renderMainPanel() {
   }
 
   const streamingCount = members.filter(m => m.isStreaming).length;
+  const streamingText = streamingCount > 0 ? ` · ${streamingCount} streaming` : '';
   let html = `<div class="party-header">
     <div class="party-header-icon">🎙️</div>
     <div>
       <div class="party-title">Party ${S.currentParty}</div>
-      <div class="party-sub">${members.length} member${members.length!==1?'s':''}${streamingCount > 0 ? ' · ' + streamingCount + ' streaming' : ''} · Click a user to adjust volume${S.isAdmin?' · Admin mode active':''}</div>
+      <div class="party-sub">${members.length} member${members.length!==1?'s':''}${streamingText} · Click a user to adjust volume${S.isAdmin?' · Admin mode active':''}</div>
     </div>
   </div>`;
 
