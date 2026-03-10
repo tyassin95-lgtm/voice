@@ -3,7 +3,6 @@
 
 export let myUsername    = '';
 export let myPassword    = '';   // only set for registered users
-export let isGuest       = true;
 export let currentParty  = null;
 export let isBroadcaster = false;
 export let isMuted       = false;
@@ -15,6 +14,13 @@ export let serverMutedMe = false;
 export let localStream   = null;
 export let partyData     = {};
 export let amISpeaking   = false;
+
+// ── Server state ──
+export let currentServerId     = null;
+export let myServers           = [];
+export let discoverableServers = [];
+export let pendingServers      = [];
+export let currentServerData   = null;
 
 // ── Profile state ──
 export let myAvatarUrl    = '';
@@ -101,13 +107,17 @@ export let mgmtSearchTimeout = null;
 
 export function setMyUsername(v)    { myUsername = v; }
 export function setMyPassword(v)    { myPassword = v; }
-export function setIsGuest(v)       { isGuest = v; }
 export function setCurrentParty(v)  { currentParty = v; }
 export function setIsBroadcaster(v) { isBroadcaster = v; }
 export function setIsMuted(v)       { isMuted = v; }
 export function setIsDeafened(v)    { isDeafened = v; }
 export function setIsAdmin(v)       { isAdmin = v; }
 export function setMyRole(v)        { myRole = v; }
+export function setCurrentServerId(v)     { currentServerId = v; }
+export function setMyServers(v)           { myServers = v; }
+export function setDiscoverableServers(v) { discoverableServers = v; }
+export function setPendingServers(v)      { pendingServers = v; }
+export function setCurrentServerData(v)   { currentServerData = v; }
 export function setOwnerCode(v)     { ownerCode = v; }
 export function setServerMutedMe(v) { serverMutedMe = v; }
 export function setLocalStream(v)   { localStream = v; }
