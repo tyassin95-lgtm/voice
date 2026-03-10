@@ -1,5 +1,6 @@
 const express = require('express');
 const path    = require('path');
+const crypto  = require('crypto');
 const multer  = require('multer');
 const { loadAccounts, saveAccounts } = require('../services/accountService');
 const { loadServers, saveServers }   = require('../services/serverService');
@@ -32,7 +33,7 @@ function generateInviteCode() {
   let code = '';
   for (let i = 0; i < 8; i++) {
     if (i === 4) code += '-';
-    code += INVITE_CHARS[Math.floor(Math.random() * INVITE_CHARS.length)];
+    code += INVITE_CHARS[crypto.randomInt(INVITE_CHARS.length)];
   }
   return code;
 }
@@ -120,10 +121,11 @@ router.post('/servers/create', (req, res) => {
   const chCount = Math.min(20, Math.max(1, parseInt(channelCount) || 4));
 
   const now = Date.now();
-  const id = 'srv_' + now;
+  const rnd = crypto.randomInt(1000, 9999);
+  const id = 'srv_' + now + '_' + rnd;
   const channels = [];
   for (let i = 0; i < chCount; i++) {
-    channels.push({ id: 'ch_' + (now + i), name: 'Channel ' + (i + 1) });
+    channels.push({ id: 'ch_' + now + '_' + i, name: 'Channel ' + (i + 1) });
   }
 
   const server = {
@@ -168,7 +170,7 @@ router.post('/servers/edit', (req, res) => {
     if (newCount > srv.channels.length) {
       const now = Date.now();
       for (let i = srv.channels.length; i < newCount; i++) {
-        srv.channels.push({ id: 'ch_' + (now + i), name: 'Channel ' + (i + 1) });
+        srv.channels.push({ id: 'ch_' + now + '_' + i, name: 'Channel ' + (i + 1) });
       }
     } else if (newCount < srv.channels.length) {
       srv.channels = srv.channels.slice(0, newCount);
