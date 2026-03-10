@@ -488,8 +488,9 @@ export function submitAdminPassword() {
       return;
     }
     closeAdminModal();
-    // Owner code was correct — open admin management panel
     S.setOwnerCode(pw);
+    // Role will be updated via the 'role-admin-granted' socket event
+    // Open management panel as a bonus after role is set
     openAdminManagement();
   });
 }
@@ -1193,6 +1194,10 @@ export function logout() {
 export function renderMemberSidebar() {
   const list = document.getElementById('member-sidebar-list');
   if (!list) return;
+  if (!S.currentServerId) {
+    list.innerHTML = '';
+    return;
+  }
 
   let html = '';
 
@@ -1231,10 +1236,9 @@ export function renderMemberSidebar() {
   list.querySelectorAll('[data-msb-user]').forEach(el => {
     el.addEventListener('click', () => openProfileModal(el.getAttribute('data-msb-user')));
   });
-  filterMemberSidebar('');
-  // Reset search input when list re-renders
   const searchInput = document.getElementById('msb-search');
-  if (searchInput) searchInput.value = '';
+  const currentQuery = searchInput?.value || '';
+  filterMemberSidebar(currentQuery); // re-apply existing filter, don't reset
 }
 
 function msbUserHTML(u, isOnline) {
@@ -1516,6 +1520,7 @@ export function joinServer(serverId) {
     S.setCurrentParty(null);
     stopPingLoop();
     Object.keys(S.peerLatency).forEach(k => delete S.peerLatency[k]);
+    Object.keys(S.peerLastSeq).forEach(k => delete S.peerLastSeq[k]);
   }
   S.setCurrentServerId(serverId);
   socket.emit('join-server', { serverId });
@@ -1533,6 +1538,10 @@ export function leaveCurrentServer() {
   S.setCurrentServerId(null);
   S.setCurrentServerData(null);
   S.setPartyData({});
+  S.setMemberList([]);
+  renderMemberSidebar();
+  renderSidebar();
+  renderMainPanel();
   loadServerList();
 }
 
@@ -1712,8 +1721,12 @@ export async function submitCreateServer() {
 
     closeServerCreateModal();
     notify('Server created ✓', 'success');
+    if (data.server) S.setCurrentServerId(data.server.id); // set BEFORE loadServerList to prevent double-join
     await loadServerList();
-    if (data.server) joinServer(data.server.id);
+    // joinServer only if loadServerList didn't already join the new server
+    if (data.server && (!S.currentServerData || S.currentServerData.id !== data.server.id)) {
+      joinServer(data.server.id);
+    }
   } catch (e) {
     setErr('sc-err', 'Could not reach server');
   }
