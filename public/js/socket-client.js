@@ -7,6 +7,10 @@ import {
   renderSidebar, renderMainPanel, updateMyCard, updateRoleBadge,
   updateLatencyDisplay, updateBcPauseBtn, renderMemberSidebar
 } from './ui-controller.js';
+import {
+  handleWatchRequest, handleStreamOffer, handleStreamAnswer,
+  handleStreamIce, onStreamEnded
+} from './stream-engine.js';
 import { playSound } from './utils.js';
 
 export const socket = io({
@@ -124,6 +128,32 @@ socket.on('broadcaster-joined', ({ socketId, username }) => {
   if (socketId === socket.id) return;
   notify(`📡 ${username} is now broadcasting`);
   renderMainPanel();
+});
+
+// ── Screen share signaling ──
+socket.on('stream-available', ({ streamerId, streamerName }) => {
+  notify(`🖥️ ${streamerName} started screen sharing`);
+  renderMainPanel();
+});
+
+socket.on('stream-ended', ({ streamerId }) => {
+  onStreamEnded({ streamerId });
+});
+
+socket.on('stream-watch-request', (data) => {
+  handleWatchRequest(data);
+});
+
+socket.on('stream-offer', (data) => {
+  handleStreamOffer(data);
+});
+
+socket.on('stream-answer', (data) => {
+  handleStreamAnswer(data);
+});
+
+socket.on('stream-ice', (data) => {
+  handleStreamIce(data);
 });
 
 // ── Latency measurement ──

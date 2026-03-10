@@ -4,6 +4,7 @@ import * as S from './state.js';
 import { socket, startPingLoop, stopPingLoop } from './socket-client.js';
 import { esc, setErr, notify, playSound, latencyClass } from './utils.js';
 import { initAudio, removePeerPlayer, switchMicrophone, initVAD } from './audio-engine.js';
+import { startScreenShare, stopScreenShare, requestWatchStream, stopWatchingStream } from './stream-engine.js';
 
 // Validate hex color format for safe inline style use
 function safeColor(c) { return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#5865f2'; }
@@ -914,7 +915,8 @@ export function renderSidebar() {
         const nameSpan = document.createElement('span');
         nameSpan.className = 'ch-member-name' + (isMe ? ' is-you' : '') + (m.serverMuted ? ' is-muted' : '') + (m.selfMuted ? ' self-muted' : '') + (m.selfDeafened ? ' self-deafened' : '');
         const muteIcon = m.selfDeafened ? '🔕' : m.selfMuted ? '🔇' : '';
-        nameSpan.textContent = (isMe ? '▶ ' : '') + muteIcon + (muteIcon ? ' ' : '') + m.username;
+        const streamIcon = m.isStreaming ? '🖥️ ' : '';
+        nameSpan.textContent = (isMe ? '▶ ' : '') + streamIcon + muteIcon + (muteIcon ? ' ' : '') + m.username;
         row.appendChild(nameSpan);
 
         // Latency indicator
@@ -987,6 +989,7 @@ export function renderMainPanel() {
   if (leaveBtn) leaveBtn.style.display = S.currentParty ? 'flex' : 'none';
   if (chanName) chanName.textContent = S.currentParty ? `Party ${S.currentParty}` : 'No Channel';
   updateBcPauseBtn();
+  updateScreenShareBtn();
   if (!S.currentParty) { empty.style.display='flex'; view.style.display='none'; return; }
   empty.style.display='none'; view.style.display='block';
 
@@ -999,11 +1002,12 @@ export function renderMainPanel() {
     });
   }
 
+  const streamingCount = members.filter(m => m.isStreaming).length;
   let html = `<div class="party-header">
     <div class="party-header-icon">🎙️</div>
     <div>
       <div class="party-title">Party ${S.currentParty}</div>
-      <div class="party-sub">${members.length} member${members.length!==1?'s':''} · Click a user to adjust volume${S.isAdmin?' · Admin mode active':''}</div>
+      <div class="party-sub">${members.length} member${members.length!==1?'s':''}${streamingCount > 0 ? ' · ' + streamingCount + ' streaming' : ''} · Click a user to adjust volume${S.isAdmin?' · Admin mode active':''}</div>
     </div>
   </div>`;
 
@@ -1021,7 +1025,7 @@ export function renderMainPanel() {
 
   html += `<div class="members-grid">`;
   if (members.find(m=>m.socketId===socket.id) || S.isBroadcaster)
-    html += memberCardHTML({ socketId: socket.id, username: S.myUsername, isBroadcaster: S.isBroadcaster, isAdmin: S.isAdmin, serverMuted: S.serverMutedMe }, true);
+    html += memberCardHTML({ socketId: socket.id, username: S.myUsername, isBroadcaster: S.isBroadcaster, isAdmin: S.isAdmin, serverMuted: S.serverMutedMe, isStreaming: S.isStreaming }, true);
   allCards.forEach(m => { if (m.socketId !== socket.id) html += memberCardHTML(m, false); });
   html += `</div>`;
   view.innerHTML = html;
@@ -1052,14 +1056,23 @@ function memberCardHTML(m, isMe) {
   const memberRole = isMe ? S.myRole : getMemberRole(m.username);
   const glowClass = memberRole === 'owner' ? ' role-owner-glow' : memberRole === 'admin' ? ' role-admin-glow' : '';
 
-  return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}"
+  const isStreamingMember = !isMe && m.isStreaming;
+  const streamingClass = isStreamingMember ? ' streaming-card' : '';
+  const cardClick = !isMe
+    ? (isStreamingMember
+      ? `onclick="window._watchStream('${m.socketId}')"`
+      : `onclick="window._openPopover('${m.socketId}',event)"`)
+    : '';
+
+  return `<div class="member-card${speaking?' speaking':''}${m.isBroadcaster?' broadcaster-card':''}${locMuted?' user-muted-local':''}${srvMuted&&!isMe?' server-muted-card':''}${streamingClass}"
     id="card-${m.socketId}"
     style="border-top:3px solid ${bannerColor}"
-    ${!isMe?`onclick="window._openPopover('${m.socketId}',event)"`:''}>
+    ${cardClick}>
     <div class="member-avatar${volCustom?' vol-custom':''}${glowClass}" ${volCustom?`data-vol="${vol}%"`:''}>${avatarContent}</div>
     <div class="member-name">${esc(m.username)}</div>
     ${isMe?'<div class="member-you">· you</div>':''}
     <div class="member-tags">
+      ${m.isStreaming?'<span class="tag tag-streaming">🖥️ Live</span>':''}
       ${m.isBroadcaster?'<span class="tag tag-broadcaster">Broadcaster</span>':''}
       ${(isMe?S.isAdmin:m.isAdmin)?'<span class="tag tag-admin">Admin</span>':''}
       ${speaking?'<span class="tag tag-speaking">Speaking</span>':''}
@@ -1076,6 +1089,32 @@ function memberCardHTML(m, isMe) {
   </div>`;
 }
 
+// ── Screen Share Button ──
+export function toggleScreenShare() {
+  if (S.isStreaming) {
+    stopScreenShare();
+  } else {
+    startScreenShare();
+  }
+}
+
+export function updateScreenShareBtn() {
+  const btn = document.getElementById('btn-screenshare');
+  if (!btn) return;
+  btn.style.display = S.currentParty ? 'flex' : 'none';
+  const icon = document.getElementById('icon-screenshare');
+  const label = document.getElementById('label-screenshare');
+  if (S.isStreaming) {
+    btn.classList.add('active-red');
+    if (icon) icon.innerHTML = '🖥️';
+    if (label) label.textContent = 'Stop';
+  } else {
+    btn.classList.remove('active-red');
+    if (icon) icon.innerHTML = '🖥️';
+    if (label) label.textContent = 'Share';
+  }
+}
+
 // ── Join / Leave ──
 export function joinParty(partyId) {
   if (S.currentParty === partyId) return;
@@ -1089,6 +1128,8 @@ export function joinParty(partyId) {
 
 export function leaveParty() {
   if (!S.currentParty) return;
+  if (S.isStreaming) stopScreenShare();
+  if (S.watchingStreamerId) stopWatchingStream();
   Object.keys(S.peerPlayers).forEach(removePeerPlayer);
   socket.emit('leave-party');
   playSound('leave');
@@ -1168,6 +1209,8 @@ export function updateRoleBadge() {
 // ── Logout ──
 export function logout() {
   if (!confirm('Sign out of OathlyVoice?')) return;
+  if (S.isStreaming) stopScreenShare();
+  if (S.watchingStreamerId) stopWatchingStream();
   if (S.currentParty) socket.emit('leave-party');
   if (S.isBroadcaster) { S.setIsBroadcaster(false); socket.emit('set-broadcaster', { isBroadcaster: false }); }
   if (S.micVAD) { try { S.micVAD.destroy(); } catch(e){} S.setMicVAD(null); }

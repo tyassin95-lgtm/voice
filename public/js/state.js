@@ -92,6 +92,13 @@ export let bcPaused       = false;
 export let bcAllSelected  = true;
 export let bcPartySelected = new Set();
 
+// Screen share state
+export let isStreaming          = false;
+export let screenStream         = null;
+export let streamPeerConnections = {};
+export let watchPeerConnection  = null;
+export let watchingStreamerId   = null;
+
 // Admin management
 export let mgmtSearchTimeout = null;
 
@@ -155,6 +162,11 @@ export function setBcPaused(v)       { bcPaused = v; }
 export function setBcAllSelected(v)  { bcAllSelected = v; }
 export function setBcPartySelected(v){ bcPartySelected = v; }
 export function setMgmtSearchTimeout(v) { mgmtSearchTimeout = v; }
+export function setIsStreaming(v)         { isStreaming = v; }
+export function setScreenStream(v)       { screenStream = v; }
+export function setStreamPeerConnections(v) { streamPeerConnections = v; }
+export function setWatchPeerConnection(v){ watchPeerConnection = v; }
+export function setWatchingStreamerId(v) { watchingStreamerId = v; }
 
 /* ═══ SVG ICON DEFINITIONS ═══ */
 export const SVG_MIC_ON   = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V21c0 .55.45 1 1 1s1-.45 1-1v-3.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>';

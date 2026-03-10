@@ -17,6 +17,7 @@ function serializeUser(sid) {
     serverMuted:      u?.serverMuted       || false,
     selfMuted:        u?.selfMuted         || false,
     selfDeafened:     u?.selfDeafened       || false,
+    isStreaming:      u?.isStreaming       || false,
     avatarUrl:        u?.avatarUrl         || '',
     bannerColor:      u?.bannerColor       || '#5865f2',
     bio:              u?.bio               || ''
