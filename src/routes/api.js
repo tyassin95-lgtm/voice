@@ -135,7 +135,7 @@ router.post('/servers/create', (req, res) => {
 });
 
 // POST /voice/api/servers/upload-banner
-router.post('/servers/upload-banner', bannerUpload.single('banner'), (req, res) => {
+router.post('/servers/upload-banner', bannerUpload.single('banner'), async (req, res) => {
   const { ownerCode, serverId } = req.body || {};
   if (ownerCode !== OWNER_CODE) return res.json({ ok: false, error: 'Unauthorized' });
   const servers = loadServers();
@@ -147,7 +147,7 @@ router.post('/servers/upload-banner', bannerUpload.single('banner'), (req, res) 
   const ext = path.extname(req.file.originalname) || '.png';
   const filename = serverId + ext;
   const destDir = path.join(__dirname, '..', '..', 'public', 'uploads', 'banners');
-  fs.writeFileSync(path.join(destDir, filename), req.file.buffer);
+  await fs.promises.writeFile(path.join(destDir, filename), req.file.buffer);
 
   srv.bannerUrl = '/voice/uploads/banners/' + filename;
   saveServers(servers);

@@ -1645,7 +1645,7 @@ export function renderServerRail() {
   if (logo) rail.appendChild(logo);
   // Re-add separator after logo
   const sep = document.createElement('div');
-  sep.style.cssText = 'width:32px;height:1px;background:rgba(255,255,255,0.06);margin:4px 0';
+  sep.className = 'nav-rail-sep';
   rail.appendChild(sep);
 
   for (const srv of S.myServers) {
