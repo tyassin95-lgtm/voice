@@ -70,6 +70,8 @@ function createWindow() {
   });
 
   // Load the web app
+  // Set VOICE_URL to point at your production server (e.g. https://example.com/voice/).
+  // Defaults to the local development server.
   const appUrl = process.env.VOICE_URL || 'http://localhost:3000/voice/';
   mainWindow.loadURL(appUrl);
 

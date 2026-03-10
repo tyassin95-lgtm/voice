@@ -30,10 +30,13 @@ export async function startScreenShare() {
         return;
       }
 
-      // Pick the first screen source, or let the user choose
-      // For now, present a simple selection via the first full-screen source
+      // Pick the first full-screen source as a sensible default.
+      // A richer source-picker UI can be layered on top in the future.
       const screenSource = sources.find(s => s.id.startsWith('screen:')) || sources[0];
 
+      // NOTE: Electron requires the legacy mandatory constraint syntax for
+      // chromeMediaSource / chromeMediaSourceId — standard constraints do not
+      // work with Electron's desktopCapturer-backed getUserMedia.
       stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
