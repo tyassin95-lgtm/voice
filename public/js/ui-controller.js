@@ -1482,8 +1482,12 @@ let _ssBannerFile = null; // temp store for server settings banner
 
 export async function loadServerList() {
   try {
-    const ownerParam = S.ownerCode ? `&ownerCode=${encodeURIComponent(S.ownerCode)}` : '';
-    const res = await fetch(`/voice/api/servers/list?username=${encodeURIComponent(S.myUsername)}&password=${encodeURIComponent(S.myPassword)}${ownerParam}`);
+    const listBody = { username: S.myUsername, password: S.myPassword };
+    if (S.ownerCode) listBody.ownerCode = S.ownerCode;
+    const res = await fetch('/voice/api/servers/list', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(listBody)
+    });
     if (!res.ok) return;
     const data = await res.json();
     if (!data.ok) return;

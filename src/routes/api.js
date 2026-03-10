@@ -78,12 +78,12 @@ router.post('/save-settings', (req, res) => {
 
 // ═══ SERVER MANAGEMENT ROUTES ═══
 
-// GET /voice/api/servers/list?username&password&ownerCode
-router.get('/servers/list', (req, res) => {
-  const acc = authUser(req.query);
+// POST /voice/api/servers/list
+router.post('/servers/list', (req, res) => {
+  const acc = authUser(req.body);
   if (!acc) return res.json({ ok: false, error: 'Unauthorized' });
   const uname = acc.username.toLowerCase();
-  const isOwner = acc.role === 'owner' || req.query.ownerCode === OWNER_CODE;
+  const isOwner = acc.role === 'owner' || (req.body.ownerCode === OWNER_CODE);
   const servers = loadServers();
 
   const myServers = [];
