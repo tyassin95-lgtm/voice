@@ -1,5 +1,6 @@
 node_modules/
 package-lock.json
+accounts.json
 servers.json
 server_icons/
 profile_images/
