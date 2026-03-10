@@ -8,11 +8,28 @@ import { initAudio, removePeerPlayer, switchMicrophone, initVAD } from './audio-
 // Validate hex color format for safe inline style use
 function safeColor(c) { return /^#[0-9a-fA-F]{6}$/.test(c) ? c : '#5865f2'; }
 
+// Rebuild sidebar avatar cleanly every time (avoids status dot duplication)
+function syncSidebarAvatar() {
+  const sidebarAvatar = document.getElementById('sidebar-avatar');
+  if (!sidebarAvatar) return;
+  if (S.myAvatarUrl) {
+    sidebarAvatar.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt=""><span class="status-dot connected" id="status-dot"></span>`;
+  } else {
+    sidebarAvatar.innerHTML = `${esc(S.myUsername[0].toUpperCase())}<span class="status-dot connected" id="status-dot"></span>`;
+  }
+}
+
 function updateOwnerLoginVisibility() {
-  const ownerLoginRow = document.getElementById('owner-login-row');
-  const ownerLoginContent = document.getElementById('owner-login-content');
-  if (ownerLoginRow) ownerLoginRow.style.display = S.isAdmin ? 'none' : 'block';
-  if (ownerLoginContent) ownerLoginContent.style.display = S.isAdmin ? 'none' : 'block';
+  const ownerTab     = document.getElementById('settings-tab-owner');
+  const ownerContent = document.getElementById('tab-owner');
+  // Also clean up old owner-login-row/owner-login-content if they still exist in HTML
+  const oldRow     = document.getElementById('owner-login-row');
+  const oldContent = document.getElementById('owner-login-content');
+  if (oldRow)     oldRow.style.display     = 'none';
+  if (oldContent) oldContent.style.display = 'none';
+  // Show the dedicated tab only when not yet admin
+  if (ownerTab)    ownerTab.style.display    = S.isAdmin ? 'none' : '';
+  if (ownerContent) ownerContent.style.display = 'none'; // tab switching handles content visibility
 }
 
 // ── Auth tab switching ──
@@ -94,26 +111,13 @@ export function enterApp() {
     ? 'Guest — settings not saved'
     : `Signed in as ${S.myUsername}`;
   // Sync sidebar user panel
-  const sidebarAvatar   = document.getElementById('sidebar-avatar');
+  syncSidebarAvatar();
   const sidebarUsername = document.getElementById('sidebar-username');
-  if (sidebarAvatar) {
-    if (S.myAvatarUrl) {
-      sidebarAvatar.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt=""><span class="status-dot connected" id="status-dot"></span>`;
-    } else {
-      sidebarAvatar.textContent = S.myUsername[0].toUpperCase();
-      // Re-add the status dot
-      const dot = document.createElement('span');
-      dot.className = 'status-dot connected';
-      dot.id = 'status-dot';
-      sidebarAvatar.appendChild(dot);
-    }
-  }
   if (sidebarUsername) sidebarUsername.textContent = S.myUsername;
   socket.emit('join', { username: S.myUsername });
   initAudio();   // initVAD is called inside initAudio after getUserMedia succeeds
   applySettingsUI();
   initPTTTouchButton();
-  initProfileSettingsUI();
 }
 
 export function applySettings(s) {
@@ -156,7 +160,7 @@ export function closeSettings() {
 }
 
 export function switchSettingsTab(tabId) {
-  const validTabs = ['voice-video', 'app-settings', 'user-profile'];
+  const validTabs = ['voice-video', 'app-settings', 'owner'];
   if (!validTabs.includes(tabId)) return;
   document.querySelectorAll('.settings-tab-content').forEach(el => el.style.display = 'none');
   document.querySelectorAll('.settings-tab').forEach(el => el.classList.remove('active'));
@@ -1198,6 +1202,10 @@ export function renderMemberSidebar() {
   list.querySelectorAll('[data-msb-user]').forEach(el => {
     el.addEventListener('click', () => openProfileModal(el.getAttribute('data-msb-user')));
   });
+  filterMemberSidebar('');
+  // Reset search input when list re-renders
+  const searchInput = document.getElementById('msb-search');
+  if (searchInput) searchInput.value = '';
 }
 
 function msbUserHTML(u, isOnline) {
@@ -1291,16 +1299,7 @@ export async function onAvatarFileSelected() {
     if (!data.ok) return notify(data.error || 'Upload failed', 'error');
     S.setMyAvatarUrl(data.avatarUrl);
     updateAvatarPreview();
-    // Sync sidebar avatar
-    const sidebarAvatar = document.getElementById('sidebar-avatar');
-    if (sidebarAvatar) {
-      if (data.avatarUrl) {
-        sidebarAvatar.innerHTML = `<img src="${esc(data.avatarUrl)}" alt=""><span class="status-dot connected" id="status-dot"></span>`;
-      } else {
-        sidebarAvatar.innerHTML = `<span class="status-dot connected" id="status-dot"></span>`;
-        sidebarAvatar.prepend(document.createTextNode(S.myUsername[0].toUpperCase()));
-      }
-    }
+    syncSidebarAvatar();
     socket.emit('update-profile', { avatarUrl: data.avatarUrl, bannerColor: S.myBannerColor, bio: S.myBio });
     notify('Avatar uploaded ✓', 'success');
   } catch (e) {
@@ -1320,22 +1319,135 @@ function updateAvatarPreview() {
   }
 }
 
-export function initProfileSettingsUI() {
-  const section = document.getElementById('profile-settings-section');
-  const guestNotice = document.getElementById('profile-guest-notice');
-  if (S.isGuest) {
-    if (section) section.style.display = 'none';
-    if (guestNotice) guestNotice.style.display = 'block';
-  } else {
-    if (section) section.style.display = 'block';
-    if (guestNotice) guestNotice.style.display = 'none';
-  }
-  document.getElementById('profile-bio-input').value     = S.myBio || '';
-  document.getElementById('profile-status-input').value  = S.myCustomStatus || '';
-  document.getElementById('profile-banner-color').value  = S.myBannerColor || '#5865f2';
-  document.getElementById('profile-banner-color-label').textContent = S.myBannerColor || '#5865f2';
-  document.getElementById('profile-banner-color').addEventListener('input', function() {
-    document.getElementById('profile-banner-color-label').textContent = this.value;
+// initProfileSettingsUI removed — profile editing moved to Profile Editor modal
+
+// ── Member Sidebar Search ──
+export function filterMemberSidebar(query) {
+  const q = query.trim().toLowerCase();
+  const list = document.getElementById('member-sidebar-list');
+  if (!list) return;
+  list.querySelectorAll('.msb-user').forEach(el => {
+    const name = el.getAttribute('data-msb-user') || '';
+    el.style.display = (!q || name.toLowerCase().includes(q)) ? '' : 'none';
   });
-  updateAvatarPreview();
+  // Hide category headers if all their members are hidden
+  list.querySelectorAll('.msb-category').forEach(cat => {
+    let sibling = cat.nextElementSibling;
+    let allHidden = true;
+    while (sibling && !sibling.classList.contains('msb-category')) {
+      if (sibling.style.display !== 'none') { allHidden = false; break; }
+      sibling = sibling.nextElementSibling;
+    }
+    cat.style.display = allHidden ? 'none' : '';
+  });
+}
+
+// ── Profile Editor Modal ──
+export function openProfileEditor() {
+  if (S.isGuest) {
+    document.getElementById('pe-guest-notice').style.display = 'block';
+    document.getElementById('pe-save-row').style.display = 'none';
+  } else {
+    document.getElementById('pe-guest-notice').style.display = 'none';
+    document.getElementById('pe-save-row').style.display = 'block';
+  }
+  // Populate fields from current state
+  document.getElementById('pe-status-input').value = S.myCustomStatus || '';
+  document.getElementById('pe-bio-input').value    = S.myBio || '';
+  document.getElementById('pe-banner-color').value = S.myBannerColor || '#5865f2';
+  document.getElementById('pe-banner-color-label').textContent = S.myBannerColor || '#5865f2';
+  updatePEPreview();
+  document.getElementById('profile-editor-modal').classList.remove('hidden');
+}
+
+export function closeProfileEditor() {
+  document.getElementById('profile-editor-modal').classList.add('hidden');
+}
+
+function updatePEPreview() {
+  // Banner
+  const banner = document.getElementById('pe-banner-preview');
+  if (banner) banner.style.background = safeColor(S.myBannerColor || '#5865f2');
+  // Avatar (preview in the card)
+  const avatarEl = document.getElementById('pe-avatar-preview');
+  if (avatarEl) {
+    if (S.myAvatarUrl) {
+      avatarEl.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt="">`;
+    } else {
+      avatarEl.innerHTML = esc((S.myUsername || '?')[0].toUpperCase());
+    }
+  }
+  // Avatar thumb (small one next to upload button)
+  const thumb = document.getElementById('pe-avatar-thumb');
+  if (thumb) {
+    if (S.myAvatarUrl) {
+      thumb.innerHTML = `<img src="${esc(S.myAvatarUrl)}" alt="">`;
+    } else {
+      thumb.textContent = (S.myUsername || '?')[0].toUpperCase();
+    }
+  }
+  // Name + status
+  const nameEl = document.getElementById('pe-preview-name');
+  if (nameEl) nameEl.textContent = S.myUsername || '';
+  const statusEl = document.getElementById('pe-preview-status');
+  if (statusEl) statusEl.textContent = S.myCustomStatus || '';
+}
+
+export function onPEBannerColorChange(val) {
+  S.setMyBannerColor(val);
+  document.getElementById('pe-banner-color-label').textContent = val;
+  updatePEPreview();
+}
+
+export function onPEStatusInput(val) {
+  S.setMyCustomStatus(val);
+  updatePEPreview();
+}
+
+export async function onPEAvatarSelected() {
+  if (S.isGuest || !S.myPassword) return notify('Sign in to upload avatar', 'error');
+  const fileInput = document.getElementById('pe-avatar-input');
+  if (!fileInput.files.length) return;
+  const formData = new FormData();
+  formData.append('avatar', fileInput.files[0]);
+  formData.append('username', S.myUsername);
+  formData.append('password', S.myPassword);
+  try {
+    const res = await fetch('/voice/api/upload-avatar', { method: 'POST', body: formData });
+    if (!res.ok) return notify('Upload failed', 'error');
+    const data = await res.json();
+    if (!data.ok) return notify(data.error || 'Upload failed', 'error');
+    S.setMyAvatarUrl(data.avatarUrl);
+    syncSidebarAvatar();
+    updatePEPreview();
+    socket.emit('update-profile', { avatarUrl: data.avatarUrl, bannerColor: S.myBannerColor, bio: S.myBio });
+    notify('Avatar uploaded ✓', 'success');
+  } catch (e) {
+    notify('Could not reach server', 'error');
+  }
+}
+
+export async function savePEProfile() {
+  if (S.isGuest || !S.myPassword) return notify('Sign in to save profile', 'error');
+  const bio          = document.getElementById('pe-bio-input').value;
+  const bannerColor  = document.getElementById('pe-banner-color').value;
+  const customStatus = document.getElementById('pe-status-input').value;
+  try {
+    const res = await fetch('/voice/api/update-profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: S.myUsername, password: S.myPassword, bio, bannerColor, customStatus })
+    });
+    if (!res.ok) return notify('Could not save profile', 'error');
+    const data = await res.json();
+    if (!data.ok) return notify(data.error || 'Could not save profile', 'error');
+    S.setMyBio(data.bio);
+    S.setMyBannerColor(data.bannerColor);
+    S.setMyCustomStatus(data.customStatus);
+    socket.emit('update-profile', { avatarUrl: S.myAvatarUrl, bannerColor: data.bannerColor, bio: data.bio });
+    updatePEPreview();
+    notify('Profile saved ✓', 'success');
+    closeProfileEditor();
+  } catch (e) {
+    notify('Could not reach server', 'error');
+  }
 }
