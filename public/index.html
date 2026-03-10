@@ -23,11 +23,10 @@
       <div class="login-icon">🎙️</div>
       <div class="login-brand">OathlyVoice</div>
     </div>
-    <div class="modal-sub">Welcome back! Sign in or continue as guest</div>
+    <div class="modal-sub">Welcome back! Sign in to get started</div>
     <div class="modal-tabs">
       <button class="modal-tab active" onclick="switchAuthTab('login')">Sign In</button>
       <button class="modal-tab" onclick="switchAuthTab('register')">Register</button>
-      <button class="modal-tab" onclick="switchAuthTab('guest')">Guest</button>
     </div>
 
     <!-- Login -->
@@ -47,13 +46,6 @@
       <button type="submit" class="btn-primary">Create Account</button>
     </form>
 
-    <!-- Guest -->
-    <form id="tab-guest" style="display:none" onsubmit="event.preventDefault(); doGuest();">
-      <div class="field"><label>Display Name</label><input type="text" id="guest-name" placeholder="Enter your name" maxlength="24"/></div>
-      <div class="modal-err" id="guest-err"></div>
-      <button type="submit" class="btn-primary">Join as Guest</button>
-      <p style="font-size:11px;color:var(--text-3);margin-top:12px;text-align:center">Settings won't be saved as a guest</p>
-    </form>
   </div>
 </div>
 
@@ -411,9 +403,6 @@
           style="width:100%;background:var(--nav-bg);border:none;border-radius:3px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;outline:none;resize:vertical"></textarea>
       </div>
 
-      <div id="pe-guest-notice" style="display:none;font-size:13px;color:var(--text-3);text-align:center;padding:12px 0">
-        Sign in to customize your profile
-      </div>
 
       <div id="pe-save-row">
         <button class="btn-primary" onclick="savePEProfile()">Save Changes</button>

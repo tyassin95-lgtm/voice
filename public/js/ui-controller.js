@@ -34,11 +34,11 @@ function updateOwnerLoginVisibility() {
 
 // ── Auth tab switching ──
 export function switchAuthTab(tab) {
-  ['login','register','guest'].forEach(t => {
+  ['login','register'].forEach(t => {
     document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
   });
   document.querySelectorAll('.modal-tab').forEach((el, i) => {
-    el.classList.toggle('active', ['login','register','guest'][i] === tab);
+    el.classList.toggle('active', ['login','register'][i] === tab);
   });
 }
 
@@ -57,7 +57,6 @@ export async function doLogin() {
     if (!data.ok) return setErr('login-err', data.error);
     S.setMyUsername(data.username);
     S.setMyPassword(password);
-    S.setIsGuest(false);
     S.setMyRole(data.role || 'user');
     S.setMyAvatarUrl(data.avatarUrl || '');
     S.setMyBannerColor(data.bannerColor || '#5865f2');
@@ -87,7 +86,6 @@ export async function doRegister() {
     if (!data.ok) return setErr('reg-err', data.error);
     S.setMyUsername(username);
     S.setMyPassword(password);
-    S.setIsGuest(false);
     notify('Account created! Welcome, ' + username, 'success');
     enterApp();
   } catch (e) {
@@ -95,21 +93,11 @@ export async function doRegister() {
   }
 }
 
-export function doGuest() {
-  const name = document.getElementById('guest-name').value.trim();
-  if (!name) return setErr('guest-err', 'Enter a name');
-  S.setMyUsername(name);
-  S.setIsGuest(true);
-  enterApp();
-}
-
 export function enterApp() {
   document.getElementById('auth-modal').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
-  document.getElementById('settings-save-row').style.display = S.isGuest ? 'none' : 'block';
-  document.getElementById('settings-sub').textContent = S.isGuest
-    ? 'Guest — settings not saved'
-    : `Signed in as ${S.myUsername}`;
+  document.getElementById('settings-save-row').style.display = 'block';
+  document.getElementById('settings-sub').textContent = `Signed in as ${S.myUsername}`;
   // Sync sidebar user panel
   syncSidebarAvatar();
   const sidebarUsername = document.getElementById('sidebar-username');
@@ -311,7 +299,7 @@ export function startListeningPTT() {
 }
 
 export async function saveSettings() {
-  if (S.isGuest || !S.myPassword) return;
+  if (!S.myPassword) return;
   try {
     const res = await fetch('/voice/api/save-settings', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1262,7 +1250,7 @@ export function closeProfileModal() {
 
 // ── Profile Customization (settings tab) ──
 export async function saveProfile() {
-  if (S.isGuest || !S.myPassword) return notify('Sign in to save profile', 'error');
+  if (!S.myPassword) return notify('Sign in to save profile', 'error');
   const bio          = document.getElementById('profile-bio-input').value;
   const bannerColor  = document.getElementById('profile-banner-color').value;
   const customStatus = document.getElementById('profile-status-input').value;
@@ -1285,7 +1273,7 @@ export async function saveProfile() {
 }
 
 export async function onAvatarFileSelected() {
-  if (S.isGuest || !S.myPassword) return notify('Sign in to upload avatar', 'error');
+  if (!S.myPassword) return notify('Sign in to upload avatar', 'error');
   const fileInput = document.getElementById('avatar-file-input');
   if (!fileInput.files.length) return;
   const formData = new FormData();
@@ -1344,13 +1332,7 @@ export function filterMemberSidebar(query) {
 
 // ── Profile Editor Modal ──
 export function openProfileEditor() {
-  if (S.isGuest) {
-    document.getElementById('pe-guest-notice').style.display = 'block';
-    document.getElementById('pe-save-row').style.display = 'none';
-  } else {
-    document.getElementById('pe-guest-notice').style.display = 'none';
-    document.getElementById('pe-save-row').style.display = 'block';
-  }
+  document.getElementById('pe-save-row').style.display = 'block';
   // Populate fields from current state
   document.getElementById('pe-status-input').value = S.myCustomStatus || '';
   document.getElementById('pe-bio-input').value    = S.myBio || '';
@@ -1405,7 +1387,7 @@ export function onPEStatusInput(val) {
 }
 
 export async function onPEAvatarSelected() {
-  if (S.isGuest || !S.myPassword) return notify('Sign in to upload avatar', 'error');
+  if (!S.myPassword) return notify('Sign in to upload avatar', 'error');
   const fileInput = document.getElementById('pe-avatar-input');
   if (!fileInput.files.length) return;
   const formData = new FormData();
@@ -1428,7 +1410,7 @@ export async function onPEAvatarSelected() {
 }
 
 export async function savePEProfile() {
-  if (S.isGuest || !S.myPassword) return notify('Sign in to save profile', 'error');
+  if (!S.myPassword) return notify('Sign in to save profile', 'error');
   const bio          = document.getElementById('pe-bio-input').value;
   const bannerColor  = document.getElementById('pe-banner-color').value;
   const customStatus = document.getElementById('pe-status-input').value;

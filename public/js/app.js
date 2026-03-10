@@ -3,7 +3,7 @@
 import * as S from './state.js';
 import { socket } from './socket-client.js';
 import {
-  switchAuthTab, doLogin, doRegister, doGuest,
+  switchAuthTab, doLogin, doRegister,
   openSettings, closeSettings, switchSettingsTab, onSensChange, onInputVolChange,
   onPttToggle, onNoiseCancelToggle, onPttTouchToggle,
   startListeningPTT, saveSettings,
@@ -29,7 +29,6 @@ import { playSound } from './utils.js';
 window.switchAuthTab        = switchAuthTab;
 window.doLogin              = doLogin;
 window.doRegister           = doRegister;
-window.doGuest              = doGuest;
 window.openSettings         = openSettings;
 window.closeSettings        = closeSettings;
 window.switchSettingsTab    = switchSettingsTab;

@@ -3,7 +3,6 @@
 
 export let myUsername    = '';
 export let myPassword    = '';   // only set for registered users
-export let isGuest       = true;
 export let currentParty  = null;
 export let isBroadcaster = false;
 export let isMuted       = false;
@@ -101,7 +100,6 @@ export let mgmtSearchTimeout = null;
 
 export function setMyUsername(v)    { myUsername = v; }
 export function setMyPassword(v)    { myPassword = v; }
-export function setIsGuest(v)       { isGuest = v; }
 export function setCurrentParty(v)  { currentParty = v; }
 export function setIsBroadcaster(v) { isBroadcaster = v; }
 export function setIsMuted(v)       { isMuted = v; }
