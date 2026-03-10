@@ -213,6 +213,7 @@ export function onPttToggle() {
     S.localStream.getAudioTracks().forEach(t => t.enabled = true);
   }
   updatePTTButton();
+  if (window.electronAPI) window.electronAPI.syncSettings('ptt', S.settings.pushToTalk, S.settings.pttKey);
 }
 
 export function onNoiseCancelToggle() {
@@ -331,6 +332,7 @@ export function onMuteKeybindToggle() {
   S.settings.muteKeybind = document.getElementById('toggle-mute-keybind').checked;
   document.getElementById('mute-key-row').style.opacity       = S.settings.muteKeybind ? '1' : '0.4';
   document.getElementById('mute-key-row').style.pointerEvents = S.settings.muteKeybind ? '' : 'none';
+  if (window.electronAPI) window.electronAPI.syncSettings('mute', S.settings.muteKeybind, S.settings.muteKey);
 }
 
 export function startListeningMuteKey() {
@@ -344,6 +346,7 @@ export function onBcPauseKeybindToggle() {
   S.settings.bcPauseKeybind = document.getElementById('toggle-bcpause-keybind').checked;
   document.getElementById('bcpause-key-row').style.opacity       = S.settings.bcPauseKeybind ? '1' : '0.4';
   document.getElementById('bcpause-key-row').style.pointerEvents = S.settings.bcPauseKeybind ? '' : 'none';
+  if (window.electronAPI) window.electronAPI.syncSettings('pause', S.settings.bcPauseKeybind, S.settings.bcPauseKey);
 }
 
 export function startListeningBcPauseKey() {

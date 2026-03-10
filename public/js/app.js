@@ -93,6 +93,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('ptt-key-btn').textContent = e.code;
     document.getElementById('ptt-key-btn').classList.remove('listening');
     S.setPttListening(false);
+    if (window.electronAPI) window.electronAPI.syncSettings('ptt', S.settings.pushToTalk, S.settings.pttKey);
     return;
   }
   // Capture mute key assignment
@@ -102,6 +103,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('mute-key-btn').textContent = e.code;
     document.getElementById('mute-key-btn').classList.remove('listening');
     S.setMuteKeyListening(false);
+    if (window.electronAPI) window.electronAPI.syncSettings('mute', S.settings.muteKeybind, S.settings.muteKey);
     return;
   }
   // Capture broadcast pause key assignment
@@ -111,6 +113,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('bcpause-key-btn').textContent = e.code;
     document.getElementById('bcpause-key-btn').classList.remove('listening');
     S.setBcPauseKeyListening(false);
+    if (window.electronAPI) window.electronAPI.syncSettings('pause', S.settings.bcPauseKeybind, S.settings.bcPauseKey);
     return;
   }
   // Ignore keybinds when typing in inputs
@@ -155,3 +158,35 @@ document.addEventListener('touchstart', () => {
   if (S.audioCtx && S.audioCtx.state === 'suspended') S.audioCtx.resume();
   if (S.playbackCtx && S.playbackCtx.state === 'suspended') S.playbackCtx.resume();
 }, { passive: true });
+
+// ── Electron Desktop Integration ──
+// When running inside the Electron wrapper, listen for global shortcut events
+// forwarded from the main process via the contextBridge preload API.
+if (window.electronAPI) {
+  window.electronAPI.onShortcut('ptt-down', () => {
+    if (S.settings.pushToTalk && !S.pttActive) {
+      S.setPttActive(true);
+      setPTTTransmit(true);
+    }
+  });
+
+  window.electronAPI.onShortcut('ptt-up', () => {
+    if (S.settings.pushToTalk && S.pttActive) {
+      S.setPttActive(false);
+      setPTTTransmit(false);
+    }
+  });
+
+  window.electronAPI.onShortcut('toggle-mute', () => {
+    toggleMute();
+  });
+
+  window.electronAPI.onShortcut('toggle-pause', () => {
+    onBroadcastPauseToggle();
+  });
+
+  // Sync initial keybind settings to the main process
+  window.electronAPI.syncSettings('ptt', S.settings.pushToTalk, S.settings.pttKey);
+  window.electronAPI.syncSettings('mute', S.settings.muteKeybind, S.settings.muteKey);
+  window.electronAPI.syncSettings('pause', S.settings.bcPauseKeybind, S.settings.bcPauseKey);
+}
