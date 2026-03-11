@@ -51,11 +51,11 @@ function iohookCodeToKey(keycode) {
 let mainWindow = null;
 let tray = null;
 
-// Current shortcut configuration (matches the settings object in the renderer)
+// Current shortcut configuration (synced from renderer via sync-settings IPC)
 const shortcuts = {
-  ptt:   { key: 'KeyV', enabled: true },
-  mute:  { key: 'KeyM', enabled: true },
-  pause: { key: 'KeyB', enabled: true },
+  ptt:   { enabled: false, key: 'Space' },
+  mute:  { enabled: false, key: 'KeyM' },
+  pause: { enabled: false, key: 'KeyB' },
 };
 
 // ── Central Hotkey Manager state ──
