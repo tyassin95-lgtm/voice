@@ -1,110 +1,122 @@
 // ── GuildVoice Desktop – Main Process ──
-// Electron main process: window management, global shortcuts, tray, auto-updater,
-// media permissions, and IPC for screenshare source enumeration.
+// Electron main process: window management, global hotkeys via iohook, tray,
+// auto-updater, media permissions, and IPC for screenshare source enumeration.
 
-const { app, BrowserWindow, globalShortcut, ipcMain, Tray, Menu, session, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, session, desktopCapturer } = require('electron');
 const { autoUpdater } = require('electron-updater');
-const { GlobalKeyboardListener } = require('node-global-key-listener');
+const iohook = require('iohook');
 const path = require('path');
 
-// ── Keyboard code → Electron accelerator mapping ──
-const CODE_TO_ACCELERATOR = {
-  Space: 'Space', Backquote: '`', Minus: '-', Equal: '=',
-  BracketLeft: '[', BracketRight: ']', Backslash: '\\',
-  Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/',
-  ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
-  Enter: 'Return', Escape: 'Escape', Backspace: 'Backspace', Tab: 'Tab',
-  Delete: 'Delete', Insert: 'Insert', Home: 'Home', End: 'End',
-  PageUp: 'PageUp', PageDown: 'PageDown',
-  NumpadAdd: 'numadd', NumpadSubtract: 'numsub',
-  NumpadMultiply: 'nummult', NumpadDivide: 'numdiv',
-  NumpadDecimal: 'numdec', NumpadEnter: 'Enter',
-  Numpad0: 'num0', Numpad1: 'num1', Numpad2: 'num2', Numpad3: 'num3',
-  Numpad4: 'num4', Numpad5: 'num5', Numpad6: 'num6', Numpad7: 'num7',
-  Numpad8: 'num8', Numpad9: 'num9',
-  F1: 'F1', F2: 'F2', F3: 'F3', F4: 'F4', F5: 'F5', F6: 'F6',
-  F7: 'F7', F8: 'F8', F9: 'F9', F10: 'F10', F11: 'F11', F12: 'F12',
+// ── iohook scan code → W3C KeyboardEvent.code mapping ──
+// iohook fires numeric hardware scan codes; the shortcut settings use
+// W3C KeyboardEvent.code strings (e.g. 'KeyV', 'Space').
+const IOHOOK_TO_CODE = {
+  // Letters (scan codes follow physical keyboard layout)
+  30: 'KeyA', 48: 'KeyB', 46: 'KeyC', 32: 'KeyD', 18: 'KeyE',
+  33: 'KeyF', 34: 'KeyG', 35: 'KeyH', 23: 'KeyI', 36: 'KeyJ',
+  37: 'KeyK', 38: 'KeyL', 50: 'KeyM', 49: 'KeyN', 24: 'KeyO',
+  25: 'KeyP', 16: 'KeyQ', 19: 'KeyR', 31: 'KeyS', 20: 'KeyT',
+  22: 'KeyU', 47: 'KeyV', 17: 'KeyW', 45: 'KeyX', 21: 'KeyY',
+  44: 'KeyZ',
+  // Digits
+  2: 'Digit1', 3: 'Digit2', 4: 'Digit3', 5: 'Digit4', 6: 'Digit5',
+  7: 'Digit6', 8: 'Digit7', 9: 'Digit8', 10: 'Digit9', 11: 'Digit0',
+  // Function keys
+  59: 'F1', 60: 'F2', 61: 'F3', 62: 'F4', 63: 'F5', 64: 'F6',
+  65: 'F7', 66: 'F8', 67: 'F9', 68: 'F10', 87: 'F11', 88: 'F12',
+  // Special keys
+  57: 'Space', 28: 'Enter', 1: 'Escape', 15: 'Tab', 14: 'Backspace',
+  211: 'Delete', 210: 'Insert', 199: 'Home', 207: 'End',
+  201: 'PageUp', 209: 'PageDown',
+  // Arrow keys
+  200: 'ArrowUp', 208: 'ArrowDown', 203: 'ArrowLeft', 205: 'ArrowRight',
+  // Punctuation / symbols
+  41: 'Backquote', 12: 'Minus', 13: 'Equal',
+  26: 'BracketLeft', 27: 'BracketRight', 43: 'Backslash',
+  39: 'Semicolon', 40: 'Quote', 51: 'Comma', 52: 'Period', 53: 'Slash',
+  // Numpad
+  69: 'NumLock', 82: 'Numpad0', 79: 'Numpad1', 80: 'Numpad2',
+  81: 'Numpad3', 75: 'Numpad4', 76: 'Numpad5', 77: 'Numpad6',
+  71: 'Numpad7', 72: 'Numpad8', 73: 'Numpad9',
+  78: 'NumpadAdd', 74: 'NumpadSubtract',
+  55: 'NumpadMultiply', 181: 'NumpadDivide',
+  83: 'NumpadDecimal', 156: 'NumpadEnter',
 };
 
-// Map KeyA-KeyZ and Digit0-Digit9
-for (let i = 65; i <= 90; i++) {
-  const ch = String.fromCharCode(i);
-  CODE_TO_ACCELERATOR[`Key${ch}`] = ch;
-}
-for (let i = 0; i <= 9; i++) {
-  CODE_TO_ACCELERATOR[`Digit${i}`] = String(i);
-}
-
-function codeToAccelerator(code) {
-  return CODE_TO_ACCELERATOR[code] || null;
-}
-
-// ── node-global-key-listener name → KeyboardEvent.code mapping ──
-// Used for the global PTT listener which provides true keydown/keyup events.
-const NGL_NAME_TO_CODE = {
-  SPACE: 'Space', RETURN: 'Enter', ESCAPE: 'Escape', TAB: 'Tab',
-  BACK: 'Backspace', DELETE: 'Delete', INSERT: 'Insert',
-  HOME: 'Home', END: 'End', PRIOR: 'PageUp', NEXT: 'PageDown',
-  UP: 'ArrowUp', DOWN: 'ArrowDown', LEFT: 'ArrowLeft', RIGHT: 'ArrowRight',
-  OEM_1: 'Semicolon', OEM_2: 'Slash', OEM_3: 'Backquote',
-  OEM_4: 'BracketLeft', OEM_5: 'Backslash', OEM_6: 'BracketRight',
-  OEM_7: 'Quote', OEM_COMMA: 'Comma', OEM_MINUS: 'Minus',
-  OEM_PERIOD: 'Period', OEM_PLUS: 'Equal',
-  ADD: 'NumpadAdd', SUBTRACT: 'NumpadSubtract',
-  MULTIPLY: 'NumpadMultiply', DIVIDE: 'NumpadDivide',
-  DECIMAL: 'NumpadDecimal',
-  NUMPAD0: 'Numpad0', NUMPAD1: 'Numpad1', NUMPAD2: 'Numpad2',
-  NUMPAD3: 'Numpad3', NUMPAD4: 'Numpad4', NUMPAD5: 'Numpad5',
-  NUMPAD6: 'Numpad6', NUMPAD7: 'Numpad7', NUMPAD8: 'Numpad8',
-  NUMPAD9: 'Numpad9',
-  F1: 'F1', F2: 'F2', F3: 'F3', F4: 'F4', F5: 'F5', F6: 'F6',
-  F7: 'F7', F8: 'F8', F9: 'F9', F10: 'F10', F11: 'F11', F12: 'F12',
-};
-
-// Letters A-Z → KeyA-KeyZ, Digits 0-9 → Digit0-Digit9
-for (let i = 65; i <= 90; i++) {
-  const ch = String.fromCharCode(i);
-  NGL_NAME_TO_CODE[ch] = `Key${ch}`;
-}
-for (let i = 0; i <= 9; i++) {
-  NGL_NAME_TO_CODE[String(i)] = `Digit${i}`;
-}
-
-function nglNameToCode(name) {
-  return NGL_NAME_TO_CODE[name] || null;
+function iohookCodeToKey(keycode) {
+  return IOHOOK_TO_CODE[keycode] || null;
 }
 
 // ── Application state ──
 let mainWindow = null;
 let tray = null;
 
-// Current shortcut configuration
+// Current shortcut configuration (synced from renderer via sync-settings IPC)
 const shortcuts = {
-  ptt:     { enabled: false, key: 'Space' },
-  mute:    { enabled: false, key: 'KeyM' },
-  pause:   { enabled: false, key: 'KeyB' },
+  ptt:   { enabled: false, key: 'Space' },
+  mute:  { enabled: false, key: 'KeyM' },
+  pause: { enabled: false, key: 'KeyB' },
 };
 
-// ── Global keyboard listener for PTT ──
-// Uses node-global-key-listener for true keydown/keyup detection that works
-// even when the Electron window is unfocused, minimized, or another app has focus.
-const keyboard = new GlobalKeyboardListener();
-let pttDown = false; // tracks current PTT key state
+// ── Central Hotkey Manager state ──
+// pressedKeys   – currently held keys (W3C code strings)
+// pttActive     – whether PTT is currently engaged
+// firedToggles  – toggle shortcuts that have already fired for the current press
+//                 (prevents repeat-firing while a key is held)
+const pressedKeys  = new Set();
+let   pttActive    = false;
+const firedToggles = new Set();
 
-keyboard.addListener((e) => {
-  if (!mainWindow || !shortcuts.ptt.enabled) return;
+// ── Hotkey Manager: iohook-based global keyboard system ──
+// Replaces both globalShortcut and node-global-key-listener with a single
+// low-level OS input hook that reliably detects keydown/keyup even when
+// the Electron window is not focused.
 
-  const code = nglNameToCode(e.name);
-  if (code !== shortcuts.ptt.key) return;
+function startHotkeys() {
+  iohook.on('keydown', (event) => {
+    const code = iohookCodeToKey(event.keycode);
+    if (!code || !mainWindow) return;
 
-  if (e.state === 'DOWN' && !pttDown) {
-    pttDown = true;
-    mainWindow.webContents.send('shortcut', 'ptt-down');
-  } else if (e.state === 'UP' && pttDown) {
-    pttDown = false;
-    mainWindow.webContents.send('shortcut', 'ptt-up');
-  }
-});
+    pressedKeys.add(code);
+
+    // PTT: fire on transition from inactive → active
+    if (shortcuts.ptt.enabled && code === shortcuts.ptt.key && !pttActive) {
+      pttActive = true;
+      mainWindow.webContents.send('shortcut', 'ptt-down');
+    }
+
+    // Toggle mute: fire once per press
+    if (shortcuts.mute.enabled && code === shortcuts.mute.key && !firedToggles.has('mute')) {
+      firedToggles.add('mute');
+      mainWindow.webContents.send('shortcut', 'toggle-mute');
+    }
+
+    // Toggle broadcast pause: fire once per press
+    if (shortcuts.pause.enabled && code === shortcuts.pause.key && !firedToggles.has('pause')) {
+      firedToggles.add('pause');
+      mainWindow.webContents.send('shortcut', 'toggle-pause');
+    }
+  });
+
+  iohook.on('keyup', (event) => {
+    const code = iohookCodeToKey(event.keycode);
+    if (!code || !mainWindow) return;
+
+    pressedKeys.delete(code);
+
+    // PTT: fire on transition from active → inactive
+    if (shortcuts.ptt.enabled && code === shortcuts.ptt.key && pttActive) {
+      pttActive = false;
+      mainWindow.webContents.send('shortcut', 'ptt-up');
+    }
+
+    // Allow toggle shortcuts to fire again on the next press
+    if (code === shortcuts.mute.key) firedToggles.delete('mute');
+    if (code === shortcuts.pause.key) firedToggles.delete('pause');
+  });
+
+  iohook.start();
+}
 
 // ── Window creation ──
 function createWindow() {
@@ -145,38 +157,12 @@ function createWindow() {
   });
 }
 
-// ── Global shortcut management ──
-// PTT uses the global keyboard listener (above) for reliable keydown/keyup.
-// Mute and broadcast-pause only need single-press detection, so globalShortcut is fine.
-function registerShortcuts() {
-  globalShortcut.unregisterAll();
-
-  // Reset PTT state when shortcuts are re-registered (key may have changed)
-  pttDown = false;
-
-  // Mute toggle shortcut
-  if (shortcuts.mute.enabled) {
-    const accel = codeToAccelerator(shortcuts.mute.key);
-    if (accel) {
-      globalShortcut.register(accel, () => {
-        if (mainWindow) {
-          mainWindow.webContents.send('shortcut', 'toggle-mute');
-        }
-      });
-    }
-  }
-
-  // Broadcast pause toggle shortcut
-  if (shortcuts.pause.enabled) {
-    const accel = codeToAccelerator(shortcuts.pause.key);
-    if (accel) {
-      globalShortcut.register(accel, () => {
-        if (mainWindow) {
-          mainWindow.webContents.send('shortcut', 'toggle-pause');
-        }
-      });
-    }
-  }
+// ── Global shortcut state reset ──
+// Called when settings change to ensure clean transition.
+function resetHotkeyState() {
+  pressedKeys.clear();
+  pttActive = false;
+  firedToggles.clear();
 }
 
 // ── IPC handlers ──
@@ -190,7 +176,7 @@ ipcMain.on('sync-settings', (_event, { type, enabled, key }) => {
   } else if (type === 'pause') {
     shortcuts.pause = { enabled, key };
   }
-  registerShortcuts();
+  resetHotkeyState();
 });
 
 // Desktop source enumeration for screen sharing
@@ -288,7 +274,7 @@ app.whenReady().then(() => {
   setupMediaPermissions();
   createWindow();
   createTray();
-  registerShortcuts();
+  startHotkeys();
   initAutoUpdater();
 
   app.on('activate', () => {
@@ -306,8 +292,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
-  keyboard.kill();
+  iohook.stop();
 });
 
 app.on('before-quit', () => {
