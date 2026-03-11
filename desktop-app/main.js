@@ -52,10 +52,12 @@ if (process.platform === 'win32') {
     const ffi = require('ffi-napi');
     // ref-napi is required by ffi-napi for pointer and type definitions.
     require('ref-napi');
-    // ref-struct-napi is available for complex struct definitions (e.g., MSG,
-    // KBDLLHOOKSTRUCT) if RegisterHotKey or SetWindowsHookEx approaches are
-    // used in the future.
-    try { require('ref-struct-napi'); } catch (_) { /* optional */ }
+    // ref-struct-napi is loaded here so it is available for complex Win32 struct
+    // definitions (e.g., MSG, KBDLLHOOKSTRUCT) if RegisterHotKey or
+    // SetWindowsHookEx approaches are adopted in the future.  It is not used by
+    // the current GetAsyncKeyState polling implementation, so a load failure is
+    // non-fatal and silently ignored.
+    try { require('ref-struct-napi'); } catch (_) { /* optional, unused currently */ }
 
     // Load user32.dll — the core Windows API library for keyboard and UI input.
     user32 = ffi.Library('user32', {
@@ -110,7 +112,12 @@ const CODE_TO_VK = {
   'Numpad7': 0x67, 'Numpad8': 0x68, 'Numpad9': 0x69,
   'NumpadAdd': 0x6B, 'NumpadSubtract': 0x6D,
   'NumpadMultiply': 0x6A, 'NumpadDivide': 0x6F,
-  'NumpadDecimal': 0x6E, 'NumpadEnter': 0x0D,
+  'NumpadDecimal': 0x6E,
+  // Note: NumpadEnter maps to the same VK_RETURN (0x0D) as the main Enter key.
+  // GetAsyncKeyState cannot distinguish between them — both report the same state.
+  // If you need to separate numpad Enter from main Enter, a low-level keyboard
+  // hook (SetWindowsHookEx + WH_KEYBOARD_LL) with scan code checking is required.
+  'NumpadEnter': 0x0D,
 };
 
 // ── Application state ──

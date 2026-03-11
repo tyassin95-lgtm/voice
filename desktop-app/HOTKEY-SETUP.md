@@ -11,9 +11,9 @@ The following npm packages are required for the native Windows API integration:
 
 | Package            | Purpose                                                  |
 | ------------------ | -------------------------------------------------------- |
-| `ffi-napi`         | Foreign Function Interface — calls native DLL functions  |
-| `ref-napi`         | Pointer/type system for ffi-napi                         |
-| `ref-struct-napi`  | C struct definitions (available for advanced Win32 APIs)  |
+| `ffi-napi`         | Foreign Function Interface — calls native DLL functions |
+| `ref-napi`         | Pointer/type system for ffi-napi                        |
+| `ref-struct-napi`  | C struct definitions (available for advanced Win32 APIs) |
 
 ## Installation
 
