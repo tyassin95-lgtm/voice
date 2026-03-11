@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "electron-updater": "^6.3.9",
-    "iohook": "^0.9.3"
+    "ffi-napi": "^4.0.3",
+    "ref-napi": "^3.0.3",
+    "ref-struct-napi": "^1.1.1"
   },
   "devDependencies": {
     "electron": "^33.3.1",
