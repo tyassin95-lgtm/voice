@@ -11,7 +11,8 @@
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "node-global-key-listener": "^0.3.0"
   },
   "devDependencies": {
     "electron": "^33.3.1",
